@@ -1,8 +1,8 @@
-# REMIND•AR — Dementia Face Recognition Assistant
+# Cue — Real-time Augmented Memory for dementia patients
 
-> **"Observe first, remember later, assist once truth is confirmed."**
+> **"Dementia takes away the context. We give you the Cue"**
 
-An AR-style face recognition system that helps dementia patients remember the people in their lives. The system observes faces, records interactions, and only displays identity information after a caregiver has confirmed who the person is.
+Real-time Augmented Memory for dementia patients, powered by edge-AI face tracking (MediaPipe) and semantic vector search (Qdrant) to deliver instant, context-aware recognition.
 
 ## 🎯 Features
 
