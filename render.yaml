@@ -1,0 +1,38 @@
+# Render Blueprint - Auto-deploy configuration
+# https://render.com/docs/blueprint-spec
+
+services:
+  - type: web
+    name: cue-backend
+    runtime: python
+    region: oregon  # or singapore for Asia
+    plan: free      # Change to 'starter' ($7/mo) to avoid cold starts
+    
+    # Build settings
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    
+    # Root directory (since backend is in a subfolder)
+    rootDir: backend
+    
+    # Environment variables (set these in Render dashboard)
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11"
+      - key: QDRANT_URL
+        sync: false  # Set in dashboard
+      - key: QDRANT_API_KEY
+        sync: false
+      - key: NEO4J_URI
+        sync: false
+      - key: NEO4J_USER
+        sync: false
+      - key: NEO4J_PASSWORD
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: FACE_SIMILARITY_THRESHOLD
+        value: "0.6"
+    
+    # Health check
+    healthCheckPath: /api/health
