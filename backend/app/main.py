@@ -14,31 +14,39 @@ from app.services.graph_db import graph_db
 async def lifespan(app: FastAPI):
     """Application lifespan handler for startup/shutdown."""
     # Startup: Connect to databases
-    print("🚀 Starting REMIND-AR Backend...")
+    import os
+    port = os.environ.get("PORT", "8000")
+    print(f"🚀 Starting Cue Backend on port {port}...")
+    
+    # Try to connect to Qdrant (non-blocking)
     try:
         vector_db.connect()
         print("✅ Connected to Qdrant")
     except Exception as e:
-        print(f"⚠️ Qdrant connection failed: {e}")
+        print(f"⚠️ Qdrant connection failed (will retry on first request): {e}")
     
+    # Try to connect to Neo4j (non-blocking)
     try:
         graph_db.connect()
         print("✅ Connected to Neo4j")
     except Exception as e:
-        print(f"⚠️ Neo4j connection failed: {e}")
+        print(f"⚠️ Neo4j connection failed (will retry on first request): {e}")
     
-    print("🎯 REMIND-AR Backend ready!")
+    print(f"🎯 Cue Backend ready! Listening on port {port}")
     
     yield
     
     # Shutdown: Close connections
-    print("👋 Shutting down REMIND-AR Backend...")
-    graph_db.close()
+    print("👋 Shutting down Cue Backend...")
+    try:
+        graph_db.close()
+    except:
+        pass
 
 
 app = FastAPI(
-    title="REMIND-AR API",
-    description="Dementia Face Recognition Assistant Backend",
+    title="Cue API",
+    description="Real-time Augmented Memory for Dementia Patients",
     version="1.0.0",
     lifespan=lifespan,
 )
