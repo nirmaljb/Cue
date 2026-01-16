@@ -1,0 +1,352 @@
+.caregiver-mode {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0a192f 0%, #112240 50%, #1a365d 100%);
+    color: #fff;
+}
+
+/* Header */
+.caregiver-header {
+    background: rgba(0, 0, 0, 0.3);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 1.5rem 2rem;
+}
+
+.header-content {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.back-link {
+    color: #00d4ff;
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.caregiver-header h1 {
+    margin: 0.5rem 0 0.25rem;
+    font-size: 1.75rem;
+}
+
+.caregiver-header p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* Main */
+.caregiver-main {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+/* Enroll Button */
+.btn-enroll-new {
+    width: 100%;
+    padding: 1rem;
+    background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
+    border: none;
+    border-radius: 12px;
+    color: #fff;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 2rem;
+}
+
+.btn-enroll-new:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 212, 255, 0.3);
+}
+
+/* Enroll Form */
+.enroll-form {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.enroll-form h2 {
+    margin: 0 0 1rem;
+    font-size: 1.25rem;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.form-row input,
+.form-row select {
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: #fff;
+    font-size: 1rem;
+}
+
+.form-row input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.form-row select option {
+    background: #1a365d;
+}
+
+/* Photo Section */
+.photo-section {
+    margin: 1rem 0;
+}
+
+.photo-options {
+    display: flex;
+    gap: 1rem;
+}
+
+.btn-photo {
+    flex: 1;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px dashed rgba(255, 255, 255, 0.3);
+    border-radius: 12px;
+    color: #fff;
+    font-size: 1rem;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.btn-photo:hover {
+    border-color: #00d4ff;
+    background: rgba(0, 212, 255, 0.1);
+}
+
+/* Webcam */
+.webcam-container {
+    text-align: center;
+}
+
+.webcam-preview {
+    width: 100%;
+    max-width: 400px;
+    border-radius: 12px;
+    transform: scaleX(-1);
+}
+
+.webcam-controls {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 1rem;
+}
+
+.btn-capture {
+    padding: 0.75rem 2rem;
+    background: #00ff88;
+    border: none;
+    border-radius: 8px;
+    color: #0a192f;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+/* Image Preview */
+.image-preview {
+    position: relative;
+    display: inline-block;
+}
+
+.image-preview img {
+    width: 150px;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 12px;
+    border: 2px solid #00d4ff;
+}
+
+.btn-remove-image {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 24px;
+    height: 24px;
+    background: #ff4444;
+    border: none;
+    border-radius: 50%;
+    color: #fff;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+/* Form Actions */
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.btn-confirm {
+    flex: 1;
+    padding: 0.75rem;
+    background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
+    border: none;
+    border-radius: 8px;
+    color: #0a192f;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-confirm:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-cancel {
+    padding: 0.75rem 1.5rem;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    color: #fff;
+    cursor: pointer;
+}
+
+/* People List */
+.people-list h2 {
+    margin: 0 0 1rem;
+    font-size: 1.1rem;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.person-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    margin-bottom: 0.75rem;
+}
+
+.person-avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.person-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.person-info {
+    flex: 1;
+}
+
+.person-info h3 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.person-relation {
+    margin: 0.25rem 0 0;
+    color: #00d4ff;
+    font-size: 0.9rem;
+}
+
+.btn-delete {
+    padding: 0.5rem 1rem;
+    background: transparent;
+    border: 1px solid rgba(255, 107, 107, 0.5);
+    border-radius: 6px;
+    color: #ff6b6b;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.btn-delete:hover {
+    background: rgba(255, 107, 107, 0.1);
+}
+
+/* States */
+.loading-state,
+.error-state,
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-top-color: #00d4ff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.empty-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.empty-state h2 {
+    margin: 0 0 0.5rem;
+    color: #00d4ff;
+}
+
+.empty-state p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* Notification */
+.notification {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.75rem 1.5rem;
+    background: rgba(0, 0, 0, 0.9);
+    border-radius: 8px;
+    color: #fff;
+    z-index: 1000;
+}
+
+.notification.success {
+    border-left: 3px solid #00ff88;
+}
+
+.notification.error {
+    border-left: 3px solid #ff4444;
+}
+
+.notification.warning {
+    border-left: 3px solid #ffaa00;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .photo-options {
+        flex-direction: column;
+    }
+}

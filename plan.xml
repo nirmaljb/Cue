@@ -1,0 +1,279 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<remindAR version="1.0">
+  <metadata>
+    <title>REMIND•AR — Complete System Flow (Updated Design)</title>
+    <created>2026-01-16</created>
+    <canonical>true</canonical>
+    <notes>Observe first, remember later, assist once truth confirmed.</notes>
+  </metadata>
+
+  <mentalModel>
+    <principle>The system does not try to “know” people immediately.</principle>
+    <principle>Caregivers confirm identity; only then assist memory recall.</principle>
+    <summary>The system observes first, remembers later, and only assists once truth is confirmed.</summary>
+    <modes>
+      <mode id="patient" label="Patient Mode" description="Daily use"/>
+      <mode id="caregiver" label="Caregiver Mode" description="Admin & truth correction"/>
+      <mode id="backend" label="Backend Intelligence" description="Recognition + reasoning"/>
+    </modes>
+  </mentalModel>
+
+  <components>
+    <frontend framework="React" features="Camera,MediaPipe,HUD,Audio,AdminPanel">
+      <feature>Camera access</feature>
+      <feature>Face detection & tracking (MediaPipe)</feature>
+      <feature>AR-style HUD overlay</feature>
+      <feature>Audio recording button</feature>
+      <feature>Caregiver admin panel (form-based)</feature>
+    </frontend>
+    <backend framework="FastAPI" services="FaceNet,Whisper,LangGraph,IdentityState">
+      <service>Face embedding extraction (FaceNet)</service>
+      <service>Speech-to-text (Whisper)</service>
+      <service>LLM reasoning (LangGraph)</service>
+      <service>Identity state management (temporary vs confirmed)</service>
+    </backend>
+    <memoryLayer>
+      <vectorDB>Face embeddings + memory embeddings</vectorDB>
+      <graphDB>People, relationships, memories, familiarity</graphDB>
+    </memoryLayer>
+  </components>
+
+  <personStates>
+    <state id="temporary">
+      <name>TEMPORARY PERSON</name>
+      <facts>
+        <fact>Face seen</fact>
+        <fact>Interactions recorded</fact>
+        <fact>No name / relation yet</fact>
+        <fact>Awaiting caregiver confirmation</fact>
+      </facts>
+    </state>
+    <state id="confirmed">
+      <name>CONFIRMED PERSON</name>
+      <facts>
+        <fact>Name assigned</fact>
+        <fact>Relation assigned</fact>
+        <fact>Approved by caregiver</fact>
+        <fact>Full HUD shown to patient</fact>
+      </facts>
+    </state>
+    <constraints>
+      <rule id="no-llm-promotion">LLM is not allowed to promote TEMPORARY → CONFIRMED.</rule>
+    </constraints>
+  </personStates>
+
+  <flows>
+    <flow id="patient-mode" label="Patient Mode — Live Recognition" default="true">
+      <step id="1" label="Camera Starts" actor="frontend">
+        <actions>
+          <action>App opens, camera auto-on</action>
+          <action>Only visible button: Record Interaction</action>
+        </actions>
+      </step>
+      <step id="2" label="Face Detection & Tracking" actor="frontend">
+        <conditions>
+          <condition>MediaPipe detects face</condition>
+          <condition>Tracks landmarks & bounding box</condition>
+          <condition>Wait until face stable and visible for ~500ms</condition>
+        </conditions>
+      </step>
+      <step id="3" label="Frame Capture" actor="frontend">
+        <actions>
+          <action>Capture one single frame</action>
+          <action>Send frame to backend</action>
+        </actions>
+        <constraints>
+          <rule>No video streaming</rule>
+        </constraints>
+      </step>
+      <step id="4" label="Face Recognition" actor="backend">
+        <pipeline>
+          <stage>Receive image</stage>
+          <stage>Extract face embedding (FaceNet)</stage>
+          <stage>Search vector DB for nearest match</stage>
+        </pipeline>
+        <outcomes>
+          <outcome id="A" label="Match Found → CONFIRMED PERSON" status="confirmed">
+            <desc>person_id resolved; confidence above threshold</desc>
+          </outcome>
+          <outcome id="B" label="Match Found → TEMPORARY PERSON" status="temporary">
+            <desc>Previously seen, not caregiver-confirmed</desc>
+          </outcome>
+          <outcome id="C" label="No Match" status="temporary">
+            <desc>Create new TEMPORARY PERSON, assign temporary_person_id, store embedding</desc>
+          </outcome>
+        </outcomes>
+      </step>
+      <step id="5" label="HUD Decision Logic" actor="backend+frontend">
+        <case id="confirmed" when="outcome=A">
+          <backend>
+            <fetch>Person profile</fetch>
+            <fetch>Memories</fetch>
+            <fetch>Familiarity score</fetch>
+            <llm mode="identity-safe" allowIdentityReasoning="true">
+              <input>Context bundle (profile, memories, familiarity)</input>
+              <output type="json" spec="strictHUD"/>
+            </llm>
+          </backend>
+          <frontend>
+            <display>HUD: Name, Relation, Emotional cue, Familiarity, Optional audio</display>
+          </frontend>
+        </case>
+        <case id="temporary" when="outcome=B or outcome=C">
+          <constraints>
+            <rule>No LLM identity reasoning</rule>
+          </constraints>
+          <frontend>
+            <display>Neutral fallback HUD: “Someone you’re talking with”</display>
+            <display>No name, no relation, no assumptions</display>
+          </frontend>
+        </case>
+      </step>
+      <step id="6" label="HUD Anchoring" actor="frontend">
+        <actions>
+          <action>Position HUD relative to face landmarks</action>
+          <action>Smooth follow + fade-in</action>
+        </actions>
+        <timeouts>
+          <timeout thresholdMs="2000">If face leaves frame, HUD fades out and lock-on resets</timeout>
+        </timeouts>
+      </step>
+    </flow>
+
+    <flow id="memory-recording" label="Memory Recording (Patient Mode)">
+      <step id="7" label="Patient Presses Record" actor="frontend">
+        <actions>
+          <action>Start audio recording</action>
+          <action>UI indicates recording</action>
+        </actions>
+      </step>
+      <step id="8" label="Stop Recording" actor="frontend">
+        <actions>
+          <action>Finalize audio clip</action>
+          <action>Send clip with person_id or temporary_person_id</action>
+        </actions>
+      </step>
+      <step id="9" label="Speech-to-Text" actor="backend">
+        <tool>Whisper</tool>
+        <output>Raw transcript</output>
+      </step>
+      <step id="10" label="Speaker-Agnostic Processing" actor="backend">
+        <strategy>Interaction-level memory; no perfect diarization attempt</strategy>
+        <optionalLLM>
+          <task>Label utterances as PATIENT / OTHER / UNKNOWN</task>
+          <use>Improve summarization quality</use>
+        </optionalLLM>
+      </step>
+      <step id="11" label="Memory Summarization" actor="backend-llm">
+        <outputs>
+          <output>Short memory summary</output>
+          <output>Emotional tone</output>
+          <output>Important event (if any)</output>
+        </outputs>
+        <constraints>
+          <rule>No names guessed</rule>
+          <rule>No relations guessed</rule>
+          <rule>No medical advice</rule>
+        </constraints>
+      </step>
+      <step id="12" label="Memory Storage" actor="backend">
+        <stores>
+          <store>Memory node (Graph DB)</store>
+          <store>Memory embedding (Vector DB)</store>
+        </stores>
+        <links>Link memory → person (temporary or confirmed)</links>
+        <updates>Update familiarity score</updates>
+      </step>
+    </flow>
+
+    <flow id="caregiver-mode" label="Caregiver Mode — Admin Panel">
+      <step id="13" label="Open Admin Panel" actor="frontend">
+        <route>/caregiver</route>
+        <ui>Simple form-based UI</ui>
+        <auth>Password or hidden entry (hackathon-safe)</auth>
+      </step>
+      <step id="14" label="Review TEMPORARY PEOPLE" actor="frontend">
+        <list label="Unreviewed People">
+          <item>
+            <name>Unknown Person #N</name>
+            <fields>
+              <field>Face image</field>
+              <field>Last interaction summary</field>
+              <field>Emotional tone</field>
+            </fields>
+          </item>
+        </list>
+      </step>
+      <step id="15" label="Caregiver Confirms Identity" actor="frontend+backend">
+        <actions>
+          <action>Assign name</action>
+          <action>Assign relation</action>
+          <action>Edit / delete memories</action>
+          <action optional="true">Merge with existing person</action>
+        </actions>
+        <stateTransition from="temporary" to="confirmed">
+          <effect>person_id becomes permanent</effect>
+        </stateTransition>
+      </step>
+      <step id="16" label="System Update" actor="backend">
+        <effects>
+          <effect>Future recognitions resolve to CONFIRMED PERSON</effect>
+          <effect>HUD shows full context</effect>
+          <effect>LLM allowed to reason over identity fields</effect>
+        </effects>
+      </step>
+    </flow>
+  </flows>
+
+  <learning>
+    <futureInteractions>
+      <effect>Adds memories</effect>
+      <effect>Improves familiarity score</effect>
+      <effect>Refines emotional cues</effect>
+      <effect>Makes HUD more helpful</effect>
+    </futureInteractions>
+    <pace>Learns slowly and safely</pace>
+  </learning>
+
+  <failureFallback>
+    <scenario id="face-not-recognized" behavior="Neutral HUD"/>
+    <scenario id="temporary-person" behavior="No name shown"/>
+    <scenario id="llm-fails" behavior="Use cached memory"/>
+    <scenario id="whisper-fails" behavior="No memory stored"/>
+    <scenario id="live-demo-unstable" behavior="Pre-recorded demo"/>
+  </failureFallback>
+
+  <safety>
+    <technical>
+      <point>Low frontend load</point>
+      <point>Deterministic backend</point>
+      <point>Easy debugging</point>
+      <point>Clear responsibilities</point>
+    </technical>
+    <humanCentered>
+      <point>No cognitive burden on patient</point>
+      <point>Caregiver controls truth</point>
+      <point>No hallucinated identities</point>
+    </humanCentered>
+    <hackathonSafe>
+      <point>Demo correction possible</point>
+      <point>Errors don’t propagate</point>
+      <point>Judges see intent + depth</point>
+    </hackathonSafe>
+  </safety>
+
+  <hudJsonSpec id="strictHUD">
+    <fields>
+      <field name="name" type="string" required="true"/>
+      <field name="relation" type="string" required="true"/>
+      <field name="emotionalCue" type="string" required="optional"/>
+      <field name="familiarity" type="number" required="true"/>
+      <field name="audioUrl" type="string" required="optional"/>
+    </fields>
+    <notes>Identity reasoning allowed only for CONFIRMED PERSON.</notes>
+  </hudJsonSpec>
+
+  <summaryOneSentence>
+    The system observes first, remembers later, and only assists once truth is confirmed.
+  </summaryOneSentence>
+</remindAR>

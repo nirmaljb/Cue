@@ -1,0 +1,104 @@
+.record-button {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.record-button:hover:not(:disabled) {
+    transform: translateX(-50%) scale(1.1);
+    border-color: rgba(255, 255, 255, 0.6);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.record-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.record-button.recording {
+    border-color: #ff4444;
+    background: rgba(255, 68, 68, 0.2);
+    animation: pulse-record 1.5s infinite;
+}
+
+@keyframes pulse-record {
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(255, 68, 68, 0.4);
+    }
+
+    50% {
+        box-shadow: 0 0 0 15px rgba(255, 68, 68, 0);
+    }
+}
+
+.record-button-inner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mic-icon {
+    width: 28px;
+    height: 28px;
+    color: #fff;
+}
+
+.stop-icon {
+    width: 20px;
+    height: 20px;
+    background: #ff4444;
+    border-radius: 4px;
+}
+
+.recording-indicator {
+    position: absolute;
+    bottom: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #fff;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    background: rgba(0, 0, 0, 0.6);
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+}
+
+.recording-dot {
+    width: 8px;
+    height: 8px;
+    background: #ff4444;
+    border-radius: 50%;
+    animation: blink 1s infinite;
+}
+
+@keyframes blink {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.3;
+    }
+}
