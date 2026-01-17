@@ -118,11 +118,16 @@ export async function healthCheck() {
 /**
  * Enroll a new person (pre-enrollment by caregiver)
  */
-export async function enrollPerson(name, relation, imageBase64) {
+export async function enrollPerson(name, relation, contextualNote, imageBase64) {
   const response = await fetch(`${API_URL}/caregiver/enroll`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, relation, image_base64: imageBase64 }),
+    body: JSON.stringify({
+      name,
+      relation,
+      contextual_note: contextualNote,
+      image_base64: imageBase64
+    }),
   });
 
   if (!response.ok) {

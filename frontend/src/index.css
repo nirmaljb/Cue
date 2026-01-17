@@ -1,2 +1,68 @@
-/* REMIND-AR Base Styles */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+:root {
+    /* Dementia-Safe Color Palette (Cue) */
+    --bg-color: #F9F9F7;
+    /* Warm, soft off-white (Cream) */
+    --text-primary: #1A1A1A;
+    /* Deep Charcoal */
+    --text-secondary: #595959;
+    /* Soft Neutral Gray */
+    --accent-color: #8DA399;
+    /* Muted Sage Green (Calm/Safety) */
+    --accent-dark: #2F3E35;
+    /* Dark Forest Green (Emphasis) */
+    --error-color: #D32F2F;
+    /* Muted Red (Use extremely sparingly) */
+
+    /* Typography */
+    --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+
+    /* UI Radii & Spacing */
+    --radius-lg: 16px;
+    --radius-md: 12px;
+    --radius-sm: 8px;
+
+    /* Animations */
+    --transition-slow: 0.4s ease-out;
+    --transition-normal: 0.2s ease-out;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: var(--font-family);
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    /* App-like feel */
+}
+
+/* Button Reset & Base Styles */
+button {
+    font-family: inherit;
+    border: none;
+    cursor: pointer;
+    background: none;
+}
+
+/* Typography Base */
+h1,
+h2,
+h3 {
+    font-weight: 500;
+    /* Medium, not bold */
+    letter-spacing: -0.02em;
+}
+
+input,
+textarea {
+    font-family: inherit;
+}

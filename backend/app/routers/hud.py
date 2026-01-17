@@ -20,21 +20,20 @@ async def get_hud_context(request: HUDContextRequest):
     """Generate HUD context for a person.
     
     Flow:
-    - CONFIRMED: Fetch profile + memories, use LLM for emotional cue
-    - TEMPORARY: Return neutral fallback (no LLM identity reasoning)
+    - CONFIRMED: Fetch profile with static contextual note.
+    - TEMPORARY/UNKNOWN: Return minimal response (clean state).
     """
     if request.status == PersonStatus.TEMPORARY:
-        # Neutral fallback for temporary persons
+        # Clean state for temporary persons (Dementia-Safe: Silence)
         return HUDContextResponse(
             name=None,
             relation=None,
-            emotionalCue="Someone you're talking with",
-            familiarity=0.0,
+            contextual_note=None,
             speak=False,
             speechText=None,
         )
     
-    # CONFIRMED person - fetch full context
+    # CONFIRMED person - fetch profile
     person = graph_db.get_person(request.person_id)
     
     if not person:
@@ -43,22 +42,13 @@ async def get_hud_context(request: HUDContextRequest):
             detail="Person not found",
         )
     
-    # Fetch memories
-    memories = graph_db.get_memories(request.person_id, limit=5)
-    
-    # Generate HUD context using LLM
-    hud_data = llm_service.generate_hud_context(
-        name=person.get("name", "Someone"),
-        relation=person.get("relation", "Someone you know"),
-        memories=memories,
-        familiarity_score=person.get("familiarity_score", 0.0),
-    )
+    # Dementia-Safe: Return static contextual note
+    # No AI emotional analysis
     
     return HUDContextResponse(
-        name=hud_data["name"],
-        relation=hud_data["relation"],
-        emotionalCue=hud_data["emotionalCue"],
-        familiarity=hud_data["familiarity"],
-        speak=hud_data["speak"],
-        speechText=hud_data.get("speechText"),
+        name=person.get("name"),
+        relation=person.get("relation"),
+        contextual_note=person.get("contextual_note"),
+        speak=False,
+        speechText=None,
     )

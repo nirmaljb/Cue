@@ -118,6 +118,12 @@ export function useFaceTracking(videoRef, onRecognitionRequest) {
         captureInProgressRef.current = false;
     }, [captureFrame, onRecognitionRequest]);
 
+    // Smoothing factor (lower = smoother/slower)
+    const SMOOTHING_FACTOR = 0.08;
+    const [facePosition, setFacePosition] = useState({ x: 0.5, y: 0.3 }); // Initial: center-top
+    const targetPositionRef = useRef({ x: 0.5, y: 0.3 });
+    const currentPositionRef = useRef({ x: 0.5, y: 0.3 });
+
     // Handle face detection results from MediaPipe
     const onFaceDetectionResults = useCallback((results) => {
         const hasFace = results.detections && results.detections.length > 0;
@@ -127,6 +133,28 @@ export function useFaceTracking(videoRef, onRecognitionRequest) {
             // Face present
             noFaceFrameCountRef.current = 0;
             faceFrameCountRef.current++;
+
+            // Calculate face center (Assume normalized 0-1)
+            const detection = results.detections[0];
+            const bbox = detection.boundingBox;
+
+            // MediaPipe detection returns relative bounding box (0-1)
+            // Center X = xCenter, Center Y = yCenter
+            const centerX = bbox.xCenter;
+            const centerY = bbox.yCenter;
+
+            // Update target
+            targetPositionRef.current = { x: centerX, y: centerY };
+
+            // Apply smoothing (Lerp)
+            const cur = currentPositionRef.current;
+            const target = targetPositionRef.current;
+
+            const newX = cur.x + (target.x - cur.x) * SMOOTHING_FACTOR;
+            const newY = cur.y + (target.y - cur.y) * SMOOTHING_FACTOR;
+
+            currentPositionRef.current = { x: newX, y: newY };
+            setFacePosition({ x: newX, y: newY });
 
             // Trigger capture when face stabilizes and we're in IDLE
             if (currentState === SessionState.IDLE &&
@@ -252,6 +280,7 @@ export function useFaceTracking(videoRef, onRecognitionRequest) {
         stopTracking,
         retryRecognition,
         captureFrame,
+        facePosition,
         // Convenience state checks
         isIdle: sessionState === SessionState.IDLE,
         isCapturing: sessionState === SessionState.CAPTURING,

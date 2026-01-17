@@ -3,6 +3,7 @@
 from pydantic import BaseModel
 from typing import Optional
 from enum import Enum
+from datetime import datetime
 
 
 class PersonStatus(str, Enum):
@@ -47,8 +48,8 @@ class HUDContextResponse(BaseModel):
     """HUD payload to display on frontend."""
     name: Optional[str] = None
     relation: Optional[str] = None
-    emotionalCue: str
-    familiarity: float
+    contextual_note: Optional[str] = None
+    # Removed emotionalCue and familiarity for Dementia-Safe design
     speak: bool = False
     speechText: Optional[str] = None
 
@@ -104,28 +105,32 @@ class ConfirmPersonResponse(BaseModel):
 
 
 class EnrollPersonRequest(BaseModel):
-    """Request to enroll a new person (pre-enrollment by caregiver)."""
+    """Request to enroll a new person."""
     name: str
     relation: str
+    contextual_note: Optional[str] = None  # Static cue for the patient
     image_base64: str  # Photo of the person
 
 
 class EnrollPersonResponse(BaseModel):
-    """Response after enrolling a person."""
-    status: str
+    """Response from enrolling a person."""
+    success: bool
     person_id: str
     name: str
     relation: str
+    contextual_note: Optional[str] = None
     message: str
 
 
 class ConfirmedPerson(BaseModel):
-    """A confirmed person in the system."""
+    """A confirmed (enrolled) person."""
     person_id: str
     name: str
     relation: str
-    face_image_url: str
-    familiarity_score: float
+    contextual_note: Optional[str] = None
+    face_image_url: Optional[str] = None
+    last_seen: Optional[datetime] = None
+    created_at: Optional[datetime] = None
 
 
 class ConfirmedPeopleResponse(BaseModel):

@@ -1,0 +1,418 @@
+<design_brief>
+  <project_context>
+    <type>Mobile-first assistive application for people living with dementia</type>
+    <purpose>Provides gentle contextual cues to help patients recognize people they are interacting with</purpose>
+    <not>Not a dashboard, not a social app, not a consumer productivity tool</not>
+    <metaphor>A quiet cognitive aid, not an interactive application</metaphor>
+    <priorities>Emotional safety, visual stability, predictability, and calmness above novelty or expressiveness</priorities>
+    <product_type>Real-world assistive product, not a concept UI</product_type>
+  </project_context>
+
+  <design_principles>
+    <title>Core Design Principles (Non-Negotiable)</title>
+    <principle>Calm over cleverness</principle>
+    <principle>Stability over responsiveness</principle>
+    <principle>Silence over feedback</principle>
+    <principle>Familiarity over visual novelty</principle>
+    <principle>Accessibility is the design, not an add-on</principle>
+    <critical_rule>Nothing in the UI should surprise the user</critical_rule>
+    <neurological_principle>Design choices are not aesthetic decisions — they are neurological ones</neurological_principle>
+  </design_principles>
+
+  <target_users>
+    <primary_user>
+      <identity>A dementia patient</identity>
+      <characteristics>
+        <characteristic>May have memory loss</characteristic>
+        <characteristic>Reduced attention span</characteristic>
+        <characteristic>Anxiety triggered by visual change</characteristic>
+      </characteristics>
+      <emotional_requirements>
+        <requirement>Should never feel blamed, corrected, or monitored</requirement>
+        <requirement>Should never be required to "do" anything to use the app</requirement>
+      </emotional_requirements>
+    </primary_user>
+
+    <secondary_user>
+      <identity>A caregiver or family member</identity>
+      <usage>Uses the app occasionally to enroll people and adjust phrasing</usage>
+      <needs>Clarity and control, but not complexity</needs>
+    </secondary_user>
+  </target_users>
+
+  <platform_constraints>
+    <approach>Mobile-first</approach>
+    <primary_device>Smartphone (portrait orientation)</primary_device>
+    <future_consideration>Designed to later translate to AR/glasses, but current UI must stand alone</future_consideration>
+    <forbidden>
+      <item>No desktop-style layouts</item>
+      <item>No sidebars</item>
+      <item>No multi-panel views</item>
+    </forbidden>
+  </platform_constraints>
+
+  <visual_style>
+    <design_language>
+      <foundation>Swiss / International Style</foundation>
+      <approach>Soft minimalism</approach>
+      <layer>Assistive accessibility</layer>
+    </design_language>
+
+    <desired_feeling>
+      <feeling>Neutral</feeling>
+      <feeling>Quiet</feeling>
+      <feeling>Intentionally understated</feeling>
+      <feeling>Almost "printed" rather than "rendered"</feeling>
+    </desired_feeling>
+
+    <avoid_feeling>
+      <avoid>Futuristic</avoid>
+      <avoid>Gamified</avoid>
+      <avoid>Animated</avoid>
+      <avoid>AI-branded</avoid>
+      <avoid>Surveillance-like</avoid>
+    </avoid_feeling>
+  </visual_style>
+
+  <color_system>
+    <neurological_basis>
+      <principle>Colors chosen for cognitive impact, not aesthetics</principle>
+      <principle>Green reduces anxiety and heart rate</principle>
+      <principle>Easier on aging eyes than blue or red</principle>
+      <principle>Common in healthcare for neurological safety</principle>
+    </neurological_basis>
+
+    <background>
+      <color>Soft off-white with warm undertones (cream/slightly gray)</color>
+      <never>Pure white (causes glare and eye strain)</never>
+      <reference_feeling>Paper, not glass</reference_feeling>
+      <rationale>Reduces visual noise, helps with focus and readability</rationale>
+    </background>
+
+    <primary_color>
+      <color>Muted, desaturated green</color>
+      <examples>
+        <example>Sage green</example>
+        <example>Eucalyptus</example>
+      </examples>
+      <why_green>
+        <reason>Associated with calm, safety, and reassurance</reason>
+        <reason>Reduces anxiety and heart rate</reason>
+        <reason>Common in healthcare for good reason</reason>
+        <reason>Easier on aging eyes than blue or red</reason>
+      </why_green>
+      <never>Bright green or neon green (harsh, overstimulating)</never>
+    </primary_color>
+
+    <text>
+      <primary>Deep charcoal (never pure black)</primary>
+      <secondary>Soft neutral gray</secondary>
+      <rule>High contrast (WCAG AA+ minimum)</rule>
+      <rule>No high-contrast color jumps</rule>
+    </text>
+
+    <accent>
+      <color>Darker forest green</color>
+      <usage_rules>
+        <rule>Used sparingly</rule>
+        <rule>Never on backgrounds</rule>
+        <rule>Only for emphasis on names or key cues</rule>
+        <rule>Never for warnings or errors</rule>
+      </usage_rules>
+    </accent>
+
+    <forbidden_colors>
+      <item>❌ Red (triggers panic, danger response)</item>
+      <item>❌ Bright yellow (confusing, harsh on eyes)</item>
+      <item>❌ Neon colors (overstimulating)</item>
+      <item>❌ High-saturation gradients</item>
+      <item>❌ Multiple competing colors</item>
+      <item>❌ Pure white + bright green combination</item>
+    </forbidden_colors>
+
+    <accessibility_rules>
+      <title>Non-Negotiable Color Accessibility</title>
+      <rule>High contrast (WCAG AA+ compliance)</rule>
+      <rule>Never rely on color alone to convey meaning</rule>
+      <rule>Avoid thin fonts and light weights</rule>
+      <rule>Large touch targets with clear boundaries</rule>
+      <rule>Minimal color variation per screen</rule>
+      <principle>Accessibility matters more than branding</principle>
+    </accessibility_rules>
+
+    <visual_direction>
+      <characteristic>Low saturation</characteristic>
+      <characteristic>High clarity</characteristic>
+      <characteristic>Space over decoration</characteristic>
+      <characteristic>Nothing screams for attention</characteristic>
+    </visual_direction>
+  </color_system>
+
+  <branding>
+    <logo>
+      <name>cue.</name>
+      <case>Lowercase only</case>
+      <punctuation>Includes period (.)</punctuation>
+      <rationale>
+        <reason>Communicates calm and softness</reason>
+        <reason>Non-authoritative presence</reason>
+        <reason>Background assistance, not dominance</reason>
+        <reason>Aligns with "sits quietly in the background"</reason>
+      </rationale>
+    </logo>
+
+    <why_lowercase>
+      <uppercase_problems>
+        <problem>CUE feels loud</problem>
+        <problem>CUE feels technical</problem>
+        <problem>CUE feels commanding</problem>
+        <problem>CUE feels like a tool, not a companion</problem>
+      </uppercase_problems>
+      <lowercase_benefits>
+        <benefit>Feels human</benefit>
+        <benefit>Feels gentle</benefit>
+        <benefit>Feels trustworthy</benefit>
+        <benefit>A whisper, not a shout</benefit>
+      </lowercase_benefits>
+    </why_lowercase>
+
+    <period_significance>
+      <meaning>Signals completeness</meaning>
+      <meaning>A pause, not an instruction</meaning>
+      <meaning>A whisper, not a shout</meaning>
+      <assessment>Brilliant touch for dementia context</assessment>
+    </period_significance>
+
+    <typography_requirements>
+      <font_type>Humanist sans-serif</font_type>
+      <characteristics>
+        <characteristic>Rounded edges (not sharp)</characteristic>
+        <characteristic>Open letterforms</characteristic>
+        <characteristic>Clear distinction between I, l, and 1</characteristic>
+        <characteristic>Consistent stroke width</characteristic>
+      </characteristics>
+      <avoid>Ultra-modern geometric fonts</avoid>
+      <avoid>Sharp edges or aggressive styling</avoid>
+      <avoid>No aggressive iconography</avoid>
+    </typography_requirements>
+
+    <brand_personality>
+      <message>"I am here when you need me. I will not rush you."</message>
+      <tone>Calm, gentle, trustworthy</tone>
+      <not_branding_to>Patient's intellect</not_branding_to>
+      <branding_to>
+        <target>Their emotional safety</target>
+        <target>Their fear threshold</target>
+        <target>Their trust response</target>
+      </branding_to>
+      <success_criteria>Brand says: "I am calm. I will not surprise you."</success_criteria>
+    </brand_personality>
+  </branding>
+
+  <typography>
+    <font_style>
+      <type>Sans-serif only</type>
+      <requirements>
+        <requirement>High legibility</requirement>
+        <requirement>High x-height</requirement>
+        <requirement>Open letterforms</requirement>
+      </requirements>
+      <tone>
+        <quality>Neutral</quality>
+        <quality>Familiar</quality>
+        <quality>Unstyled</quality>
+      </tone>
+    </font_style>
+
+    <forbidden>
+      <item>No display fonts</item>
+      <item>No serif fonts</item>
+      <item>No thin or condensed styles</item>
+    </forbidden>
+
+    <hierarchy_mobile>
+      <element name="person_name">
+        <size>Large</size>
+        <weight>Medium</weight>
+        <tone>Calm</tone>
+      </element>
+      <element name="relationship_label">
+        <size>Smaller</size>
+        <weight>Regular</weight>
+      </element>
+      <element name="context_cue">
+        <size>Same size consistently</size>
+        <rule>Avoid visual re-ranking</rule>
+      </element>
+    </hierarchy_mobile>
+
+    <critical_rule>Typography must not "jump" or resize dynamically</critical_rule>
+  </typography>
+
+  <motion_interaction>
+    <allowed_motion>
+      <motion>Single fade-in when content appears</motion>
+      <motion>Single fade-out when content disappears</motion>
+      <duration>Subtle, unnoticeable (≈200ms)</duration>
+    </allowed_motion>
+
+    <forbidden_motion>
+      <item>Sliding panels</item>
+      <item>Loading spinners</item>
+      <item>Skeleton screens</item>
+      <item>Pulsing elements</item>
+      <item>Hover states</item>
+      <item>Parallax</item>
+      <item>Animated icons</item>
+    </forbidden_motion>
+
+    <loading_principle>If something takes time, show nothing</loading_principle>
+  </motion_interaction>
+
+  <patient_mode_ui>
+    <title>Primary Experience</title>
+    
+    <general_behavior>
+      <rule>Camera view is always stable</rule>
+      <rule>UI overlays appear only when needed</rule>
+      <rule>No visible system state (no "scanning", no "detecting", no progress)</rule>
+    </general_behavior>
+
+    <hud_layout>
+      <position>
+        <location>Upper third of the screen</location>
+        <never>Centered</never>
+        <never>Blocking the face</never>
+      </position>
+
+      <content_structure>
+        <element order="1">Person's name</element>
+        <element order="2">Relationship descriptor</element>
+        <element order="3">One short contextual cue</element>
+      </content_structure>
+
+      <example>
+        <line>Rahul</line>
+        <line>Close friend</line>
+        <line></line>
+        <line>You usually talk in the evenings.</line>
+      </example>
+
+      <rules>
+        <rule>Max 2 lines for cues</rule>
+        <rule>No scrolling</rule>
+        <rule>No truncation</rule>
+        <rule>No icons</rule>
+        <rule>No badges</rule>
+        <rule>No borders</rule>
+        <rule>No cards</rule>
+      </rules>
+
+      <design_metaphor>Text gently placed over reality, not a UI panel</design_metaphor>
+    </hud_layout>
+  </patient_mode_ui>
+
+  <failure_uncertainty_states>
+    <title>When system is unsure</title>
+    <forbidden>
+      <item>Do NOT show errors</item>
+      <item>Do NOT show "Unknown"</item>
+      <item>Do NOT show alerts</item>
+    </forbidden>
+    <allowed>
+      <option>Show nothing</option>
+      <option>Show a neutral placeholder phrased gently</option>
+    </allowed>
+    <principle>Silence is acceptable and preferred</principle>
+  </failure_uncertainty_states>
+
+  <caregiver_mode_ui>
+    <tone>
+      <quality>Calm</quality>
+      <quality>Editor-like</quality>
+      <not>Not an admin dashboard</not>
+      <not>No charts</not>
+      <not>No analytics visuals</not>
+    </tone>
+
+    <core_actions>
+      <action>Add a person</action>
+      <action>Edit name and relationship</action>
+      <action>Adjust phrasing of cues</action>
+      <action>Review saved memories</action>
+    </core_actions>
+
+    <layout>
+      <structure>Single column</structure>
+      <touch_targets>Large</touch_targets>
+      <labels>Clear</labels>
+      <patterns>Familiar form patterns</patterns>
+    </layout>
+
+    <reference_metaphor>
+      <like>Editing a contact in a phone</like>
+      <not_like>Managing users in a SaaS product</not_like>
+    </reference_metaphor>
+  </caregiver_mode_ui>
+
+  <accessibility_requirements>
+    <requirement>Large text by default</requirement>
+    <requirement>Generous line spacing</requirement>
+    <requirement>Clear touch targets</requirement>
+    <requirement>No reliance on color alone</requirement>
+    <requirement>No hidden gestures</requirement>
+    <requirement>No multi-step interactions</requirement>
+    <principle>Everything should be understandable at a glance</principle>
+  </accessibility_requirements>
+
+  <emotional_tone>
+    <should_feel>
+      <feeling>Reassuring</feeling>
+      <feeling>Predictable</feeling>
+      <feeling>Non-judgmental</feeling>
+      <feeling>Supportive</feeling>
+    </should_feel>
+
+    <never_feel>
+      <feeling>Corrective</feeling>
+      <feeling>Diagnostic</feeling>
+      <feeling>Surveillance-oriented</feeling>
+      <feeling>"Smart"</feeling>
+    </never_feel>
+
+    <principle>The product does not show intelligence — it shows care</principle>
+  </emotional_tone>
+
+  <what_this_is_not>
+    <title>Do not design:</title>
+    <not>A dashboard</not>
+    <not>A social feed</not>
+    <not>A futuristic AR HUD</not>
+    <not>A dark mode UI</not>
+    <not>A gamified experience</not>
+    <not>A flashy demo</not>
+    <principle>This is an assistive tool that must earn trust through restraint</principle>
+  </what_this_is_not>
+
+  <final_design_goal>
+    <goal>Create a mobile interface that disappears into the background of real life, providing just enough context to reduce confusion without ever demanding attention</goal>
+    <success_metric>If the user forgets the app is there — the design has succeeded</success_metric>
+  </final_design_goal>
+
+  <design_philosophy>
+    <core_belief>Accessibility is the design, not an add-on</core_belief>
+    <approach>Earn trust through restraint</approach>
+    <quality_over_quantity>Show care, not intelligence</quality_over_quantity>
+    <neurological_design>Design choices are neurological, not just aesthetic</neurological_design>
+  </design_philosophy>
+
+  <recommended_color_palette>
+    <title>Dementia-Safe Color Palette</title>
+    <background>Warm off-white / cream</background>
+    <primary>Muted sage green / eucalyptus</primary>
+    <accent>Darker forest green (use sparingly)</accent>
+    <text_primary>Deep charcoal</text_primary>
+    <text_secondary>Soft neutral gray</text_secondary>
+    <principle>Low saturation, high clarity, space over decoration</principle>
+  </recommended_color_palette>
+</design_brief>

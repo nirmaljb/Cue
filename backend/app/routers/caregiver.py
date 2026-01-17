@@ -192,6 +192,7 @@ async def enroll_person(request: EnrollPersonRequest):
             status="confirmed",
             name=request.name,
             relation=request.relation,
+            contextual_note=request.contextual_note,
         )
         print(f"✅ Person created: {person_id}")
         
@@ -214,10 +215,11 @@ async def enroll_person(request: EnrollPersonRequest):
         print(f"✅ Face thumbnail saved")
         
         return EnrollPersonResponse(
-            status="enrolled",
+            success=True,
             person_id=person_id,
             name=request.name,
             relation=request.relation,
+            contextual_note=request.contextual_note,
             message=f"Successfully enrolled {request.name} ({request.relation})",
         )
         
@@ -241,8 +243,8 @@ async def get_confirmed_people():
             person_id=p["id"],
             name=p.get("name", "Unknown"),
             relation=p.get("relation", "Unknown"),
+            contextual_note=p.get("contextual_note"),
             face_image_url=f"/api/caregiver/face-image/{p['id']}",
-            familiarity_score=p.get("familiarity_score", 0.0),
         )
         for p in confirmed
     ]

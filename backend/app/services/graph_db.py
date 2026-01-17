@@ -67,6 +67,7 @@ class GraphDBService:
         status: str = "temporary",
         name: str = None,
         relation: str = None,
+        contextual_note: str = None,
     ) -> str:
         """Create a new person node."""
         person_id = str(uuid.uuid4())
@@ -79,13 +80,13 @@ class GraphDBService:
                     status: $status,
                     name: $name,
                     relation: $relation,
-                    familiarity_score: 0.0,
+                    contextual_note: $contextual_note,
                     created_at: $created_at,
                     confirmed_at: null,
                     last_seen_at: $created_at
                 })
             """, id=person_id, status=status, name=name, 
-                relation=relation, created_at=now)
+                relation=relation, contextual_note=contextual_note, created_at=now)
         
         return person_id
     
@@ -107,6 +108,7 @@ class GraphDBService:
         name: str = None,
         relation: str = None,
         status: str = None,
+        contextual_note: str = None,
     ):
         """Update a person's details."""
         now = datetime.utcnow().isoformat()
@@ -123,6 +125,12 @@ class GraphDBService:
                     MATCH (p:Person {id: $id})
                     SET p.relation = $relation
                 """, id=person_id, relation=relation)
+
+            if contextual_note is not None:
+                session.run("""
+                    MATCH (p:Person {id: $id})
+                    SET p.contextual_note = $note
+                """, id=person_id, note=contextual_note)
             
             if status is not None:
                 session.run("""

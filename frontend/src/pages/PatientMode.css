@@ -1,222 +1,115 @@
+/* Dementia-Safe Patient Mode - Swiss Style */
 .patient-mode {
-    position: relative;
-    width: 100%;
+    width: 100vw;
     height: 100vh;
+    position: relative;
+    background: var(--bg-color);
     overflow: hidden;
 }
 
-/* Face tracking indicator */
-.face-indicator {
-    position: absolute;
-    border: 2px solid rgba(0, 212, 255, 0.6);
-    border-radius: 8px;
-    pointer-events: none;
-    transition: all 0.1s ease;
-    box-shadow:
-        0 0 20px rgba(0, 212, 255, 0.3),
-        inset 0 0 20px rgba(0, 212, 255, 0.1);
-}
-
-.face-indicator::before,
-.face-indicator::after {
-    content: '';
-    position: absolute;
-    background: #00d4ff;
-}
-
-.face-indicator::before {
-    top: 50%;
-    left: -8px;
-    right: -8px;
-    height: 1px;
-    opacity: 0.3;
-}
-
-.face-indicator::after {
-    left: 50%;
-    top: -8px;
-    bottom: -8px;
-    width: 1px;
-    opacity: 0.3;
-}
-
-/* Mode indicator */
+/* Minimal Status Indicator (Silent) */
 .mode-indicator {
-    position: fixed;
+    position: absolute;
     top: 1.5rem;
-    left: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 0.5rem;
     padding: 0.5rem 1rem;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border-radius: 20px;
-    color: #fff;
-    font-size: 0.85rem;
-    font-weight: 500;
-    z-index: 100;
+    border-radius: 99px;
+    background: rgba(255, 255, 255, 0.5);
+    /* Very subtle */
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 50;
 }
 
 .mode-dot {
-    width: 8px;
-    height: 8px;
-    background: #00ff88;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
-    animation: pulse-mode 2s infinite;
+    background: #ccc;
+    /* Default gray */
+    transition: all 0.3s ease;
 }
 
+/* State Colors - subtle */
+.mode-dot.capturing,
 .mode-dot.scanning {
-    background: #00d4ff;
-    animation: pulse-mode 0.5s infinite;
-}
-
-.mode-dot.capturing {
-    background: #00d4ff;
-    animation: pulse-mode 0.3s infinite;
+    background: var(--accent-color);
+    /* Sage Green */
+    animation: pulse 1s infinite;
 }
 
 .mode-dot.found {
-    background: #00ff88;
+    background: var(--accent-dark);
+    /* Dark Green */
 }
 
 .mode-dot.not_found {
-    background: #ffaa00;
+    background: transparent;
+    /* Invisible in clean state */
 }
 
-@keyframes pulse-mode {
+.mode-dot.idle {
+    background: transparent;
+    /* Invisible when idle */
+}
 
-    0%,
-    100% {
-        opacity: 1;
-        box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.4);
+@keyframes pulse {
+    0% {
+        transform: scale(0.8);
+        opacity: 0.5;
     }
 
     50% {
-        opacity: 0.8;
-        box-shadow: 0 0 0 4px rgba(0, 255, 136, 0);
+        transform: scale(1.2);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(0.8);
+        opacity: 0.5;
     }
 }
 
-/* Gentle Retry Affordance */
-.retry-affordance {
-    position: fixed;
-    bottom: 8rem;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.75rem 1.5rem;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border-radius: 12px;
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 0.85rem;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    z-index: 200;
-}
-
-.retry-affordance:hover {
-    background: rgba(0, 0, 0, 0.8);
-    color: #fff;
-}
-
-.retry-tap {
-    font-size: 0.75rem;
-    color: #00d4ff;
-    opacity: 0.8;
-}
-
-/* Caregiver link */
+/* Caregiver Link - Minimal Branding */
 .caregiver-link {
-    position: fixed;
+    position: absolute;
     top: 1.5rem;
-    right: 1.5rem;
-    padding: 0.5rem 1rem;
-    background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border-radius: 20px;
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 0.8rem;
+    left: 1.5rem;
+    font-family: serif;
+    /* Humanist touch */
+    font-weight: bold;
+    font-size: 1.5rem;
+    color: var(--text-primary);
     text-decoration: none;
-    transition: all 0.3s ease;
-    z-index: 100;
+    opacity: 0.3;
+    transition: opacity 0.3s ease;
+    z-index: 60;
 }
 
 .caregiver-link:hover {
-    color: #fff;
-    background: rgba(0, 0, 0, 0.7);
+    opacity: 1;
 }
 
-/* Notification */
-.notification {
-    position: fixed;
-    top: 5rem;
+/* Retry Affordance - Clean & Minimal */
+.retry-affordance {
+    position: absolute;
+    bottom: 8rem;
     left: 50%;
     transform: translateX(-50%);
-    padding: 0.75rem 1.5rem;
-    background: rgba(0, 0, 0, 0.8);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border-radius: 8px;
-    color: #fff;
-    font-size: 0.9rem;
-    z-index: 300;
-    animation: slide-down 0.3s ease;
-    max-width: 80%;
-    text-align: center;
+    z-index: 50;
+    cursor: pointer;
+    padding: 1rem 2rem;
 }
 
-.notification.success {
-    border-left: 3px solid #00ff88;
-}
-
-.notification.error {
-    border-left: 3px solid #ff4444;
-}
-
-.notification.warning {
-    border-left: 3px solid #ffaa00;
-}
-
-.notification.info {
-    border-left: 3px solid #00d4ff;
-}
-
-@keyframes slide-down {
-    from {
-        opacity: 0;
-        transform: translateX(-50%) translateY(-20px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateX(-50%) translateY(0);
-    }
-}
-
-/* Scanning indicator */
-.scanning-indicator {
-    margin-left: 0.5rem;
-    font-size: 0.75rem;
-    color: #00d4ff;
-    animation: pulse-scan 1s infinite;
-}
-
-@keyframes pulse-scan {
-
-    0%,
-    100% {
-        opacity: 1;
-    }
-
-    50% {
-        opacity: 0.4;
-    }
+.retry-tap {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    opacity: 0.6;
+    font-weight: 400;
+    letter-spacing: 0.02em;
 }

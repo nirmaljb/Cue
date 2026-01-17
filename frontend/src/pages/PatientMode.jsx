@@ -1,20 +1,19 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Camera } from '../components/Camera';
 import { HUD } from '../components/HUD';
-import { RecordButton } from '../components/RecordButton';
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
 import { useFaceTracking, SessionState } from '../hooks/useFaceTracking';
 import { recognizeFace, getHUDContext, saveMemory } from '../services/api';
 import './PatientMode.css';
 
 /**
- * Patient Mode - Main view for dementia patient
+ * Patient Mode (Cue) - Passive, Dementia-Safe Experience
  * 
- * Architecture:
- * - Event-driven face recognition (no polling)
- * - Multi-frame capture for better quality
- * - ONE backend call per session
- * - Gentle retry affordance for recovery
+ * Logic:
+ * - Passive Face Recognition (Multi-frame)
+ * - Passive Audio Recording (Starts on recognition, stops on exit)
+ * - Silent/Unknown state (No errors)
+ * - Static Contextual Cues
  */
 export function PatientMode() {
     const [hudData, setHudData] = useState(null);
@@ -24,29 +23,32 @@ export function PatientMode() {
     const videoRef = useRef(null);
     const { isRecording, startRecording, stopRecording } = useAudioRecorder();
 
-    // Show notification
+    // Track the person who was being recorded to save memory after session ends
+    const recordingPersonIdRef = useRef(null);
+
+    // Show notification (Internal/Debug mainly, or subtle confirmation)
     const showNotification = useCallback((message, type = 'info') => {
-        setNotification({ message, type });
-        setTimeout(() => setNotification(null), 3000);
+        // Reduced visibility for patient calm checks
+        // setNotification({ message, type });
+        // setTimeout(() => setNotification(null), 3000);
+        console.log(`[Notification] ${message}`);
     }, []);
 
-    // Handle recognition request from face tracking hook
-    // Receives array of frames captured over 1.5 seconds
+    // Handle recognition request
     const handleRecognitionRequest = useCallback(async (frames) => {
         try {
-            console.log(`🔍 Sending ${frames.length} frames for recognition...`);
             const recognition = await recognizeFace(frames);
 
             if (recognition.recognized && recognition.status === 'confirmed') {
-                // Get HUD context for recognized person
                 const hud = await getHUDContext(recognition.person_id, recognition.status);
                 setHudData(hud);
                 setCurrentPersonId(recognition.person_id);
+                recordingPersonIdRef.current = recognition.person_id;
                 return { recognized: true, ...recognition };
             } else {
-                // Not recognized
                 setHudData(null);
                 setCurrentPersonId(null);
+                recordingPersonIdRef.current = null;
                 return { recognized: false };
             }
         } catch (error) {
@@ -57,26 +59,54 @@ export function PatientMode() {
         }
     }, []);
 
-    // Face tracking hook with multi-frame capture
+    // Face tracking hook
     const {
         sessionState,
         startTracking,
         stopTracking,
         retryRecognition,
+        facePosition, // Smoothed coordinates
         isIdle,
-        isCapturing,
-        isScanning,
         isRecognized,
         isNotFound,
     } = useFaceTracking(videoRef, handleRecognitionRequest);
 
-    // Clear HUD when session ends (face leaves)
+    // Passive Recording Logic
+    useEffect(() => {
+        // Start recording when person is recognized
+        if (isRecognized && !isRecording && currentPersonId) {
+            console.log('🎙️ Starting passive recording...');
+            startRecording();
+        }
+    }, [isRecognized, isRecording, currentPersonId, startRecording]);
+
+    // Handle Session End (Face Lost) -> Stop Recording & Save
     useEffect(() => {
         if (isIdle) {
+            // If we were recording and just went idle, stop and save
+            if (isRecording && recordingPersonIdRef.current) {
+                console.log('🛑 Face lost, stopping recording...');
+                const personIdToSave = recordingPersonIdRef.current;
+
+                stopRecording().then(async (audioBase64) => {
+                    if (audioBase64) {
+                        console.log('💾 Saving passive memory...');
+                        try {
+                            await saveMemory(personIdToSave, audioBase64);
+                            console.log('✅ Memory saved silently');
+                        } catch (error) {
+                            console.error('Failed to save memory:', error);
+                        }
+                    }
+                });
+            }
+
+            // Clear state
             setHudData(null);
             setCurrentPersonId(null);
+            recordingPersonIdRef.current = null;
         }
-    }, [isIdle]);
+    }, [isIdle, isRecording, stopRecording]);
 
     // Handle video ready
     const handleVideoReady = useCallback((ref) => {
@@ -84,109 +114,38 @@ export function PatientMode() {
         startTracking();
     }, [startTracking]);
 
-    // Cleanup on unmount
+    // Cleanup
     useEffect(() => {
-        return () => {
-            stopTracking();
-        };
+        return () => stopTracking();
     }, [stopTracking]);
-
-    // Handle retry tap
-    const handleRetry = useCallback(() => {
-        retryRecognition();
-    }, [retryRecognition]);
-
-    // Handle recording
-    const handleStartRecording = useCallback(() => {
-        startRecording();
-        showNotification('Recording...', 'info');
-    }, [startRecording, showNotification]);
-
-    const handleStopRecording = useCallback(async () => {
-        const audioBase64 = await stopRecording();
-
-        if (!audioBase64) {
-            showNotification('Recording failed', 'error');
-            return;
-        }
-
-        if (!currentPersonId) {
-            showNotification('No person identified. Recording not saved.', 'warning');
-            return;
-        }
-
-        showNotification('Processing...', 'info');
-
-        try {
-            const result = await saveMemory(currentPersonId, audioBase64);
-            showNotification(`Memory saved: "${result.summary}"`, 'success');
-        } catch (error) {
-            console.error('Save error:', error);
-            showNotification('Failed to save memory', 'error');
-        }
-    }, [stopRecording, currentPersonId, showNotification]);
-
-    // Get status indicator text and class
-    const getStatusInfo = () => {
-        switch (sessionState) {
-            case SessionState.IDLE:
-                return { text: 'Looking for face...', className: 'idle' };
-            case SessionState.CAPTURING:
-                return { text: 'Capturing...', className: 'capturing' };
-            case SessionState.SCANNING:
-                return { text: 'Identifying...', className: 'scanning' };
-            case SessionState.RECOGNIZED:
-                return { text: hudData?.name ? `Hi, ${hudData.name}!` : 'Recognized', className: 'found' };
-            case SessionState.NOT_FOUND:
-                return { text: 'Unknown person', className: 'not_found' };
-            default:
-                return { text: 'Ready', className: 'idle' };
-        }
-    };
-
-    const statusInfo = getStatusInfo();
 
     return (
         <div className="patient-mode">
             <Camera onVideoReady={handleVideoReady}>
                 {/* HUD Overlay - only show when recognized */}
                 {isRecognized && hudData && (
-                    <HUD data={hudData} />
+                    <HUD data={hudData} position={facePosition} />
                 )}
             </Camera>
 
-            {/* Record Button */}
-            <RecordButton
-                isRecording={isRecording}
-                onStart={handleStartRecording}
-                onStop={handleStopRecording}
-                disabled={isScanning || isCapturing}
-            />
+            {/* No Visible Controls / Buttons */}
+            {/* Passive recording happens automatically */}
 
-            {/* Gentle Retry Affordance - visible in NOT_FOUND state */}
+            {/* Subtle Retry (Clean State - Only touch to retry) */}
             {isNotFound && (
-                <div className="retry-affordance" onClick={handleRetry}>
-                    <span>Look at camera</span>
+                <div className="retry-affordance" onClick={retryRecognition}>
                     <span className="retry-tap">Tap to try again</span>
                 </div>
             )}
 
-            {/* Notification */}
-            {notification && (
-                <div className={`notification ${notification.type}`}>
-                    {notification.message}
-                </div>
-            )}
-
-            {/* Status Indicator */}
-            <div className="mode-indicator">
-                <span className={`mode-dot ${statusInfo.className}`}></span>
-                {statusInfo.text}
+            {/* Minimal Status Dot (No Text) */}
+            <div className="mode-indicator minimal">
+                <span className={`mode-dot ${sessionState.toLowerCase()}`}></span>
             </div>
 
             {/* Caregiver Link */}
             <a href="/caregiver" className="caregiver-link">
-                Caregiver Panel →
+                cue.
             </a>
         </div>
     );
