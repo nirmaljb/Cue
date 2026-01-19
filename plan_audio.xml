@@ -1,0 +1,208 @@
+<whisper_feature_specification>
+  <guiding_principle>
+    The whisper should feel like a single, gentle reassurance — then it disappears completely.
+  </guiding_principle>
+
+  <non_negotiable_rules>
+    <rule id="1" name="One-time Per Session">
+      <requirement>Plays once after successful recognition</requirement>
+      <forbidden>
+        <item>Never repeats</item>
+        <item>Never retriggers mid-session</item>
+      </forbidden>
+    </rule>
+
+    <rule id="2" name="No Audio on Failure">
+      <requirement>If recognition fails → silence</requirement>
+      <forbidden>
+        <item>No retries</item>
+        <item>No delayed audio</item>
+      </forbidden>
+    </rule>
+
+    <rule id="3" name="No Patient Interaction">
+      <requirement>Patient never "asks" for audio</requirement>
+      <forbidden>
+        <item>No buttons</item>
+        <item>No prompts</item>
+        <item>No confirmations</item>
+      </forbidden>
+    </rule>
+
+    <rule id="4" name="Caregiver-Controlled">
+      <control>Global toggle in caregiver settings</control>
+      <behavior>Off/on applies to all future sessions</behavior>
+      <forbidden>No per-session control</forbidden>
+    </rule>
+  </non_negotiable_rules>
+
+  <content_rules>
+    <title>Critical Content Requirements</title>
+
+    <rule name="Length">
+      <requirement>1–2 short sentences maximum</requirement>
+      <duration>≈3–6 seconds</duration>
+    </rule>
+
+    <rule name="Tone">
+      <quality>Calm, slow, warm</quality>
+      <approach>Neutral reassurance, not narration</approach>
+    </rule>
+
+    <rule name="Content Boundaries">
+      <allowed>Identity + gentle context only</allowed>
+      <forbidden>
+        <item>No dates</item>
+        <item>No timelines</item>
+        <item>No lists</item>
+        <item>No emotional claims ("happy", "sad")</item>
+      </forbidden>
+    </rule>
+
+    <examples>
+      <good_example>"This is Rahul. He's your close friend."</good_example>
+      <bad_example>"You last met Rahul yesterday and talked about work."</bad_example>
+      <why_bad>Contains timeline, specific event, and too much detail</why_bad>
+    </examples>
+  </content_rules>
+
+  <timing_and_mixing>
+    <timing>
+      <trigger>After HUD appears, not before</trigger>
+      <delay>Small delay (≈300–600ms) so it doesn't startle</delay>
+    </timing>
+
+    <audio_priority>
+      <rule>Never interrupt human speech</rule>
+      <condition>If ambient speech is detected, skip audio</condition>
+    </audio_priority>
+
+    <volume>
+      <default>Low by default</default>
+      <forbidden>
+        <item>No sudden peaks</item>
+        <item>No spatial panning</item>
+      </forbidden>
+    </volume>
+  </timing_and_mixing>
+
+  <voice_and_delivery>
+    <voice_choice>
+      <quality>Neutral, familiar, non-character</quality>
+      <avoid>Avoid "assistant personality"</avoid>
+      <consistency>Consistent voice across sessions</consistency>
+    </voice_choice>
+
+    <delivery_style>
+      <approach>Plain and human</approach>
+      <forbidden>
+        <item>No SSML theatrics</item>
+        <item>No emphasis tricks</item>
+        <item>No dramatic pauses</item>
+      </forbidden>
+    </delivery_style>
+  </voice_and_delivery>
+
+  <failure_and_edge_cases>
+    <failure_handling>
+      <principle>Fail silently</principle>
+      <if_tts_fails>Do nothing</if_tts_fails>
+      <forbidden>
+        <item>No fallback robot voice</item>
+        <item>No error UI</item>
+      </forbidden>
+    </failure_handling>
+
+    <session_boundaries>
+      <condition name="face_leaves_before_audio">
+        <action>Cancel audio completely</action>
+      </condition>
+      <condition name="face_leaves_during_audio">
+        <action>Stop audio immediately</action>
+      </condition>
+    </session_boundaries>
+  </failure_and_edge_cases>
+
+  <privacy_and_trust>
+    <ui_indicators>
+      <forbidden>
+        <item>No "recording" icons</item>
+        <item>No "speaking" icons</item>
+        <item>No transcripts shown to patient</item>
+      </forbidden>
+    </ui_indicators>
+
+    <caregiver_explanation>
+      <location>Caregiver settings</location>
+      <content>
+        <explain>When audio plays</explain>
+        <explain>What it says</explain>
+        <explain>How to turn it off</explain>
+      </content>
+      <tone>Brief and clear</tone>
+    </caregiver_explanation>
+  </privacy_and_trust>
+
+  <implementation_checklist>
+    <check>✓ Audio plays only once per session after successful recognition</check>
+    <check>✓ Complete silence on recognition failure</check>
+    <check>✓ No patient-facing controls or prompts</check>
+    <check>✓ Global caregiver toggle controls all sessions</check>
+    <check>✓ Content limited to 1–2 sentences (3–6 seconds)</check>
+    <check>✓ Tone is calm, slow, and warm</check>
+    <check>✓ Content contains only identity + gentle context</check>
+    <check>✓ Audio triggers 300–600ms after HUD appears</check>
+    <check>✓ Audio skipped if ambient speech detected</check>
+    <check>✓ Volume is low with no sudden peaks</check>
+    <check>✓ Voice is neutral, familiar, and consistent</check>
+    <check>✓ No SSML effects or dramatic delivery</check>
+    <check>✓ TTS failure results in silent skip, no error</check>
+    <check>✓ Audio cancelled if face leaves before playback</check>
+    <check>✓ Audio stopped immediately if face leaves during playback</check>
+    <check>✓ No UI indicators for audio activity</check>
+    <check>✓ Caregiver settings include brief explanation of feature</check>
+  </implementation_checklist>
+
+  <skip_conditions>
+    <title>When to Skip Audio Playback</title>
+    <condition>Recognition failed (NOT_FOUND state)</condition>
+    <condition>Ambient speech detected</condition>
+    <condition>TTS service fails or times out</condition>
+    <condition>Face leaves before audio ready to play</condition>
+    <condition>Caregiver has disabled whisper feature globally</condition>
+    <condition>Session ended before audio trigger point</condition>
+  </skip_conditions>
+
+  <audio_template_guidelines>
+    <title>Safe Audio Template Structure</title>
+    <template_format>
+      <sentence_1>This is [Name].</sentence_1>
+      <sentence_2>[Relationship descriptor].</sentence_2>
+    </template_format>
+    
+    <safe_relationship_descriptors>
+      <descriptor>He's your close friend</descriptor>
+      <descriptor>She's your daughter</descriptor>
+      <descriptor>He's your neighbor</descriptor>
+      <descriptor>She helps you at home</descriptor>
+      <descriptor>He's your son</descriptor>
+    </safe_relationship_descriptors>
+
+    <unsafe_additions>
+      <avoid>Time references ("yesterday", "last week")</avoid>
+      <avoid>Activity details ("you went shopping together")</avoid>
+      <avoid>Emotional descriptors ("you're always happy to see them")</avoid>
+      <avoid>Lists or multiple facts</avoid>
+      <avoid>Questions or prompts</avoid>
+    </unsafe_additions>
+  </audio_template_guidelines>
+
+  <implementation_notes>
+    <priority>Calmness over completeness</priority>
+    <priority>Silence over imperfect audio</priority>
+    <priority>Simplicity over sophistication</priority>
+    <testing_focus>Test skip conditions thoroughly</testing_focus>
+    <testing_focus>Test session boundary edge cases</testing_focus>
+    <testing_focus>Verify no audio plays during failures</testing_focus>
+  </implementation_notes>
+</whisper_feature_specification>

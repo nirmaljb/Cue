@@ -2,6 +2,8 @@
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response, FileResponse
+from pydantic import BaseModel
+from typing import Optional
 import os
 
 from app.models.schemas import (
@@ -112,6 +114,74 @@ async def delete_person(person_id: str):
         os.remove(image_path)
     
     return {"status": "deleted", "person_id": person_id}
+
+
+class UpdatePersonRequest(BaseModel):
+    """Request model for updating a person."""
+    person_id: str
+    name: Optional[str] = None
+    relation: Optional[str] = None
+    contextual_note: Optional[str] = None
+    image_base64: Optional[str] = None  # Optional new photo
+
+
+
+@router.put("/person/{person_id}")
+async def update_person(person_id: str, request: UpdatePersonRequest):
+    """Update a person's details (name, relation, context note, photo)."""
+    person = graph_db.get_person(person_id)
+    
+    if not person:
+        raise HTTPException(
+            status_code=404,
+            detail="Person not found",
+        )
+    
+    # Update text fields in Neo4j
+    if request.name or request.relation or request.contextual_note is not None:
+        graph_db.update_person(
+            person_id=person_id,
+            name=request.name,
+            relation=request.relation,
+            contextual_note=request.contextual_note,
+        )
+    
+    # Update photo if provided
+    if request.image_base64:
+        try:
+            from app.utils.image import decode_base64_image
+            from app.services.face_recognition import face_recognition
+            
+            image = decode_base64_image(request.image_base64)
+            
+            # Extract and update face embedding
+            faces = face_recognition.extract_faces(image)
+            if faces:
+                embedding = face_recognition.get_embedding(faces[0]["face"])
+                
+                # Delete old embeddings and store new one
+                vector_db.delete_person_data(person_id)
+                vector_db.store_face_embedding(
+                    person_id=person_id,
+                    embedding=embedding,
+                    status="confirmed",
+                )
+            
+            # Save new image
+            image_path = os.path.join(FACE_IMAGES_DIR, f"{person_id}.jpg")
+            os.makedirs(FACE_IMAGES_DIR, exist_ok=True)
+            image.save(image_path, "JPEG", quality=90)
+            
+        except Exception as e:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Failed to process new image: {str(e)}",
+            )
+    
+    return {
+        "status": "updated",
+        "person_id": person_id,
+    }
 
 
 @router.get("/face-image/{person_id}")

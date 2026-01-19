@@ -151,3 +151,32 @@ export async function getConfirmedPeople() {
 
   return response.json();
 }
+
+/**
+ * Update a person's details
+ */
+export async function updatePerson(personId, name, relation, contextualNote, imageBase64 = null) {
+  const body = {
+    person_id: personId,
+    name,
+    relation,
+    contextual_note: contextualNote,
+  };
+
+  if (imageBase64) {
+    body.image_base64 = imageBase64;
+  }
+
+  const response = await fetch(`${API_URL}/caregiver/person/${personId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to update person');
+  }
+
+  return response.json();
+}

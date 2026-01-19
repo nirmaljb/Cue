@@ -73,12 +73,53 @@ export function PatientMode() {
 
     // Passive Recording Logic
     useEffect(() => {
-        // Start recording when person is recognized
+        // Start recording when person is recognized (if enabled)
         if (isRecognized && !isRecording && currentPersonId) {
-            console.log('🎙️ Starting passive recording...');
-            startRecording();
+            // Check if automatic recording is enabled
+            const autoRecordEnabled = localStorage.getItem('cue_autoRecord') !== 'false';
+            if (autoRecordEnabled) {
+                console.log('🎙️ Starting passive recording...');
+                startRecording();
+            } else {
+                console.log('⏸️ Auto-recording disabled by caregiver');
+            }
         }
     }, [isRecognized, isRecording, currentPersonId, startRecording]);
+
+    // Whisper Audio Playback (One-time after recognition)
+    useEffect(() => {
+        if (isRecognized && currentPersonId && hudData) {
+            // Check if whisper is enabled
+            const whisperEnabled = localStorage.getItem('cue_whisperEnabled') !== 'false';
+            if (!whisperEnabled) {
+                console.log('⏸️ Whisper disabled by caregiver');
+                return;
+            }
+
+            // Delay for calm transition (400ms after HUD appears)
+            const timer = setTimeout(async () => {
+                try {
+                    console.log('🔊 Fetching whisper audio...');
+                    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/whisper/${currentPersonId}`);
+                    const data = await response.json();
+
+                    if (data.audio_url) {
+                        console.log('🎵 Playing whisper:', data.text);
+                        const audio = new Audio(data.audio_url);
+                        audio.volume = 0.6; // Low volume
+                        audio.play().catch(e => console.log('Audio play blocked:', e));
+                    } else {
+                        console.log('⏸️ Whisper skipped:', data.reason);
+                    }
+                } catch (e) {
+                    // Silent fail
+                    console.log('⏸️ Whisper fetch failed:', e);
+                }
+            }, 400);
+
+            return () => clearTimeout(timer);
+        }
+    }, [isRecognized, currentPersonId, hudData]);
 
     // Handle Session End (Face Lost) -> Stop Recording & Save
     useEffect(() => {

@@ -13,7 +13,23 @@ class FaceRecognitionService:
     """Service for face detection and embedding extraction using FaceNet."""
     
     def __init__(self):
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        # Device selection priority: MPS (Apple Silicon) > CUDA > CPU
+        # Note: We use hybrid approach due to MPS limitations with MTCNN
+        if torch.backends.mps.is_available():
+            self.embedding_device = torch.device("mps")  # For InceptionResnetV1
+            self.detection_device = torch.device("cpu")  # For MTCNN (has MPS bug)
+            print("🍎 Apple Silicon GPU (MPS) detected - using hybrid CPU+MPS")
+            print("   - Face detection (MTCNN): CPU")
+            print("   - Embedding extraction (ResNet): MPS")
+        elif torch.cuda.is_available():
+            self.embedding_device = torch.device("cuda")
+            self.detection_device = torch.device("cuda")
+            print("🎮 CUDA GPU detected")
+        else:
+            self.embedding_device = torch.device("cpu")
+            self.detection_device = torch.device("cpu")
+            print("💻 Using CPU (no GPU acceleration)")
+        
         self.mtcnn: Optional[MTCNN] = None
         self.resnet: Optional[InceptionResnetV1] = None
         self._initialized = False
@@ -25,7 +41,7 @@ class FaceRecognitionService:
         
         print("🔄 Loading FaceNet models...")
         
-        # MTCNN for face detection and alignment
+        # MTCNN for face detection and alignment (on CPU to avoid MPS bug)
         self.mtcnn = MTCNN(
             image_size=160,
             margin=0,
@@ -33,18 +49,18 @@ class FaceRecognitionService:
             thresholds=[0.6, 0.7, 0.7],
             factor=0.709,
             post_process=True,
-            device=self.device,
+            device=self.detection_device,
             keep_all=False,  # Only keep the largest/most confident face
         )
         
-        # InceptionResnetV1 for face embeddings (512-dim)
+        # InceptionResnetV1 for face embeddings (512-dim) - on MPS/CUDA if available
         self.resnet = InceptionResnetV1(
             pretrained="vggface2",
-            device=self.device,
+            device=self.embedding_device,
         ).eval()
         
         self._initialized = True
-        print(f"✅ FaceNet models loaded on {self.device}")
+        print(f"✅ FaceNet models loaded (detection: {self.detection_device}, embedding: {self.embedding_device})")
     
     def extract_embedding(self, image_base64: str) -> Optional[list[float]]:
         """Extract face embedding from a base64 image.
@@ -71,8 +87,8 @@ class FaceRecognitionService:
         if face_tensor.dim() == 3:
             face_tensor = face_tensor.unsqueeze(0)
         
-        # Move to device
-        face_tensor = face_tensor.to(self.device)
+        # Move to embedding device (MPS/CUDA/CPU)
+        face_tensor = face_tensor.to(self.embedding_device)
         
         # Extract embedding
         with torch.no_grad():
@@ -105,8 +121,8 @@ class FaceRecognitionService:
         if face_tensor.dim() == 3:
             face_tensor = face_tensor.unsqueeze(0)
         
-        # Move to device
-        face_tensor = face_tensor.to(self.device)
+        # Move to embedding device (MPS/CUDA/CPU)
+        face_tensor = face_tensor.to(self.embedding_device)
         
         # Extract embedding
         with torch.no_grad():

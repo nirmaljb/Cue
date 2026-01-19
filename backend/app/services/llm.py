@@ -91,8 +91,11 @@ Respond in this exact JSON format only, no other text:
         try:
             response = self.client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.7,
+                messages=[
+                    {"role": "system", "content": "You are a calm, supportive assistant helping dementia patients recognize loved ones. Always respond in valid JSON."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.5,
                 max_tokens=200,
             )
             
@@ -162,8 +165,11 @@ Respond in this exact JSON format only, no other text:
         try:
             response = self.client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.5,
+                messages=[
+                    {"role": "system", "content": "You are a memory summarization assistant. Create concise, gentle summaries. Always respond in valid JSON."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.4,
                 max_tokens=200,
             )
             
@@ -191,6 +197,82 @@ Respond in this exact JSON format only, no other text:
                 "emotional_tone": "neutral",
                 "important_event": None,
             }
+    
+    def generate_whisper_text(
+        self,
+        name: str,
+        relation: str,
+        contextual_note: str = None,
+        recent_memory: str = None,
+    ) -> Optional[str]:
+        """Generate a calm whisper text for a dementia patient.
+        
+        Args:
+            name: Person's name
+            relation: Relationship to user
+            contextual_note: Caregiver-provided context (optional)
+            recent_memory: Latest memory summary (optional)
+        
+        Returns:
+            1-2 sentence whisper text, or None if failed
+        """
+        if not self._initialized:
+            self.initialize()
+        
+        # Build context
+        context_parts = []
+        if contextual_note:
+            context_parts.append(f"Caregiver Note: {contextual_note}")
+        if recent_memory:
+            context_parts.append(f"Recent Memory: {recent_memory}")
+        
+        context_str = "\n".join(context_parts) if context_parts else "No additional context."
+        
+        prompt = f"""Generate a calm, reassuring whisper for a dementia patient.
+
+Person: {name}
+Relation: {relation}
+{context_str}
+
+Rules:
+- Maximum 2 short sentences
+- Calm, warm, slow tone
+- Second-person voice ("This is...", "He's your...")
+- NO dates, timelines, or lists
+- NO emotional claims ("happy", "sad")
+- Include identity first, then ONE gentle context if available
+
+Examples of good output:
+- "This is Rahul. He's your grandson who visits on weekends."
+- "This is Priya. She's your daughter and takes care of the garden with you."
+- "This is Dr. Sharma. He's your family doctor."
+
+Respond with ONLY the whisper text, nothing else."""
+
+        try:
+            response = self.client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[
+                    {"role": "system", "content": "You are a calm, warm voice providing gentle reassurance to dementia patients. Speak simply and kindly."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.5,
+                max_tokens=100,
+            )
+            
+            whisper_text = response.choices[0].message.content.strip()
+            
+            # Remove quotes if present
+            if whisper_text.startswith('"') and whisper_text.endswith('"'):
+                whisper_text = whisper_text[1:-1]
+            
+            print(f"🗣️ Generated whisper: {whisper_text}")
+            return whisper_text
+            
+        except Exception as e:
+            print(f"⚠️ LLM whisper error: {e}")
+            # Simple fallback
+            return f"This is {name}. They are your {relation.lower()}."
 
 
 # Singleton instance

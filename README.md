@@ -122,7 +122,7 @@ hackathon/
 | Face Tracking | MediaPipe |
 | Backend | FastAPI |
 | Face Recognition | FaceNet (facenet-pytorch) |
-| LLM | Groq (llama-3.3-70b) |
+| LLM | Groq (gpt-oss-120b) |
 | Speech-to-Text | Groq Whisper |
 | Text-to-Speech | Web Speech API |
 | Vector DB | Qdrant |

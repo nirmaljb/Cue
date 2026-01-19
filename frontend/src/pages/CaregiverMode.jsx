@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { getConfirmedPeople, enrollPerson, deletePerson } from '../services/api';
+import { getConfirmedPeople, enrollPerson, deletePerson, updatePerson } from '../services/api';
 import './CaregiverMode.css';
 
 /**
@@ -20,6 +20,36 @@ export function CaregiverMode() {
     const [enrollImage, setEnrollImage] = useState(null);
     const [enrolling, setEnrolling] = useState(false);
     const [captureMode, setCaptureMode] = useState(null); // 'webcam' or 'upload'
+
+    // Edit modal state
+    const [editingPerson, setEditingPerson] = useState(null);
+    const [editName, setEditName] = useState('');
+    const [editRelation, setEditRelation] = useState('');
+    const [editContextNote, setEditContextNote] = useState('');
+    const [editImage, setEditImage] = useState(null);
+    const [saving, setSaving] = useState(false);
+
+    // Recording Toggle (localStorage persisted)
+    const [autoRecordEnabled, setAutoRecordEnabled] = useState(() => {
+        return localStorage.getItem('cue_autoRecord') !== 'false'; // Default: ON
+    });
+
+    const toggleAutoRecord = () => {
+        const newValue = !autoRecordEnabled;
+        setAutoRecordEnabled(newValue);
+        localStorage.setItem('cue_autoRecord', String(newValue));
+    };
+
+    // Whisper Toggle (localStorage persisted)
+    const [whisperEnabled, setWhisperEnabled] = useState(() => {
+        return localStorage.getItem('cue_whisperEnabled') !== 'false'; // Default: ON
+    });
+
+    const toggleWhisper = () => {
+        const newValue = !whisperEnabled;
+        setWhisperEnabled(newValue);
+        localStorage.setItem('cue_whisperEnabled', String(newValue));
+    };
 
     // Webcam refs
     const videoRef = useRef(null);
@@ -154,6 +184,62 @@ export function CaregiverMode() {
         }
     };
 
+    // Handle start edit
+    const handleStartEdit = (person) => {
+        setEditingPerson(person);
+        setEditName(person.name);
+        setEditRelation(person.relation);
+        setEditContextNote(person.contextual_note || '');
+        setEditImage(null); // Only set if user uploads new photo
+    };
+
+    // Handle cancel edit
+    const handleCancelEdit = () => {
+        setEditingPerson(null);
+        setEditName('');
+        setEditRelation('');
+        setEditContextNote('');
+        setEditImage(null);
+    };
+
+    // Handle save edit
+    const handleSaveEdit = async () => {
+        if (!editName || !editRelation) {
+            showNotification('Name and relation are required', 'warning');
+            return;
+        }
+
+        setSaving(true);
+        try {
+            await updatePerson(
+                editingPerson.person_id,
+                editName,
+                editRelation,
+                editContextNote,
+                editImage // Will be null if no new photo
+            );
+            showNotification(`${editName} updated successfully!`, 'success');
+            handleCancelEdit();
+            fetchConfirmed();
+        } catch (err) {
+            showNotification(err.message || 'Failed to update person', 'error');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    // Handle edit file upload
+    const handleEditFileUpload = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setEditImage(reader.result);
+        };
+        reader.readAsDataURL(file);
+    };
+
     // Cleanup webcam on unmount
     useEffect(() => {
         return () => stopWebcam();
@@ -186,6 +272,36 @@ export function CaregiverMode() {
                         <div className="system-status">
                             <span className="status-dot"></span>
                             System Active & Monitoring
+                        </div>
+                    </section>
+
+                    {/* Settings Row - Side by Side Toggles */}
+                    <section className="settings-row">
+                        <div className="setting-item">
+                            <div className="setting-info">
+                                <span className="setting-label">📝 Memories</span>
+                                <span className="setting-desc">Record conversations</span>
+                            </div>
+                            <button
+                                className={`toggle-switch ${autoRecordEnabled ? 'active' : ''}`}
+                                onClick={toggleAutoRecord}
+                                aria-pressed={autoRecordEnabled}
+                            >
+                                <span className="toggle-knob"></span>
+                            </button>
+                        </div>
+                        <div className="setting-item">
+                            <div className="setting-info">
+                                <span className="setting-label">🔊 Whisper</span>
+                                <span className="setting-desc">Audio reassurance</span>
+                            </div>
+                            <button
+                                className={`toggle-switch ${whisperEnabled ? 'active' : ''}`}
+                                onClick={toggleWhisper}
+                                aria-pressed={whisperEnabled}
+                            >
+                                <span className="toggle-knob"></span>
+                            </button>
                         </div>
                     </section>
 
@@ -330,7 +446,22 @@ export function CaregiverMode() {
                             <div className="people-grid">
                                 {confirmedPeople.map((person) => (
                                     <div key={person.person_id} className="bento-card">
-                                        {/* Interaction Safety: Delete in corner with hover effect */}
+                                        {/* Edit Icon */}
+                                        <button
+                                            className="btn-edit-icon"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleStartEdit(person);
+                                            }}
+                                            title="Edit Person"
+                                        >
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                            </svg>
+                                        </button>
+
+                                        {/* Delete Icon */}
                                         <button
                                             className="btn-delete-icon"
                                             onClick={(e) => {
@@ -370,6 +501,73 @@ export function CaregiverMode() {
                     </section>
                 </div>
             </main>
+
+            {/* Edit Modal */}
+            {editingPerson && (
+                <div className="modal-overlay" onClick={handleCancelEdit}>
+                    <div className="edit-modal" onClick={(e) => e.stopPropagation()}>
+                        <h2>Edit {editingPerson.name}</h2>
+
+                        <div className="form-row">
+                            <input
+                                type="text"
+                                placeholder="Name"
+                                value={editName}
+                                onChange={(e) => setEditName(e.target.value)}
+                            />
+                            <select
+                                value={editRelation}
+                                onChange={(e) => setEditRelation(e.target.value)}
+                            >
+                                <option value="">Select Relation</option>
+                                {relationOptions.map(opt => (
+                                    <option key={opt} value={opt}>{opt}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div className="form-row">
+                            <textarea
+                                placeholder="Contextual Note"
+                                value={editContextNote}
+                                onChange={(e) => setEditContextNote(e.target.value)}
+                                rows={2}
+                            />
+                        </div>
+
+                        <div className="photo-section">
+                            <div className="current-photo">
+                                <img
+                                    src={editImage || `http://localhost:8000${editingPerson.face_image_url}`}
+                                    alt={editingPerson.name}
+                                />
+                            </div>
+                            <label className="btn-photo">
+                                📷 Change Photo
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleEditFileUpload}
+                                    style={{ display: 'none' }}
+                                />
+                            </label>
+                        </div>
+
+                        <div className="form-actions">
+                            <button
+                                onClick={handleSaveEdit}
+                                disabled={saving || !editName || !editRelation}
+                                className="btn-confirm"
+                            >
+                                {saving ? 'Saving...' : 'Save Changes'}
+                            </button>
+                            <button onClick={handleCancelEdit} className="btn-cancel">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Notification Toast */}
             {notification && (

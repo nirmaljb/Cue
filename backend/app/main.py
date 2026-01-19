@@ -87,11 +87,12 @@ async def root():
 
 
 # Import and include routers
-from app.routers import recognize, hud, memory, caregiver
+from app.routers import recognize, hud, memory, caregiver, whisper
 app.include_router(recognize.router, prefix="/api")
 app.include_router(hud.router, prefix="/api")
 app.include_router(memory.router, prefix="/api")
 app.include_router(caregiver.router, prefix="/api")
+app.include_router(whisper.router, prefix="/api")
 
 
 if __name__ == "__main__":

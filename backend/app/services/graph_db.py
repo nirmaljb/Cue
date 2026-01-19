@@ -1,11 +1,39 @@
 """Neo4j graph database service for people, relationships, and memories."""
 
 from neo4j import GraphDatabase
+from neo4j.exceptions import SessionExpired, ServiceUnavailable
 from typing import Optional
 from datetime import datetime
 import uuid
+from functools import wraps
 
 from app.config import settings
+
+
+def retry_on_connection_error(max_retries=3):
+    """Decorator to retry Neo4j operations on connection errors."""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            last_error = None
+            for attempt in range(max_retries):
+                try:
+                    # Ensure connection before operation
+                    if not self._connected or not self.driver:
+                        print(f"🔄 Reconnecting to Neo4j (attempt {attempt + 1})...")
+                        self.reconnect()
+                    return func(self, *args, **kwargs)
+                except (SessionExpired, ServiceUnavailable) as e:
+                    last_error = e
+                    print(f"⚠️ Neo4j connection error (attempt {attempt + 1}/{max_retries}): {e}")
+                    self._connected = False
+                    if attempt < max_retries - 1:
+                        continue
+                    else:
+                        raise
+            raise last_error
+        return wrapper
+    return decorator
 
 
 class GraphDBService:
@@ -17,20 +45,38 @@ class GraphDBService:
     
     def connect(self):
         """Connect to Neo4j cloud instance."""
-        if self._connected:
+        if self._connected and self.driver:
             return
         
-        self.driver = GraphDatabase.driver(
-            settings.NEO4J_URI,
-            auth=(settings.NEO4J_USER, settings.NEO4J_PASSWORD),
-        )
-        self._ensure_constraints()
-        self._connected = True
+        try:
+            self.driver = GraphDatabase.driver(
+                settings.NEO4J_URI,
+                auth=(settings.NEO4J_USER, settings.NEO4J_PASSWORD),
+                max_connection_lifetime=3600,  # 1 hour
+                max_connection_pool_size=50,
+                connection_acquisition_timeout=60,
+            )
+            self._ensure_constraints()
+            self._connected = True
+            print("✅ Connected to Neo4j")
+        except Exception as e:
+            print(f"❌ Failed to connect to Neo4j: {e}")
+            self._connected = False
+            raise
+    
+    def reconnect(self):
+        """Force reconnection to Neo4j."""
+        self.close()
+        self.connect()
     
     def close(self):
         """Close the database connection."""
         if self.driver:
-            self.driver.close()
+            try:
+                self.driver.close()
+            except:
+                pass
+            self.driver = None
             self._connected = False
     
     def _ensure_constraints(self):
@@ -90,6 +136,7 @@ class GraphDBService:
         
         return person_id
     
+    @retry_on_connection_error(max_retries=3)
     def get_person(self, person_id: str) -> Optional[dict]:
         """Get a person by ID."""
         with self.driver.session() as session:
@@ -102,6 +149,7 @@ class GraphDBService:
                 return dict(record["p"])
         return None
     
+    @retry_on_connection_error(max_retries=3)
     def update_person(
         self,
         person_id: str,

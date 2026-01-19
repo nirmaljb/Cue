@@ -30,6 +30,10 @@ class Settings:
     HOST: str = os.getenv("HOST", "0.0.0.0")
     PORT: int = int(os.getenv("PORT", "8000"))
     
+    # ElevenLabs TTS
+    ELEVENLABS_API_KEY: str = os.getenv("ELEVENLABS_API_KEY", "")
+    ELEVENLABS_VOICE_ID: str = os.getenv("ELEVENLABS_VOICE_ID", "21m00Tcm4TlvDq8ikWAM")  # Default: Rachel
+    
     # Qdrant Collection Names
     FACE_EMBEDDINGS_COLLECTION: str = "face_embeddings"
     MEMORY_EMBEDDINGS_COLLECTION: str = "memory_embeddings"
