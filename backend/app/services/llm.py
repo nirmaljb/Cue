@@ -228,36 +228,51 @@ Respond in this exact JSON format only, no other text:
         
         context_str = "\n".join(context_parts) if context_parts else "No additional context."
         
-        prompt = f"""Generate a calm, reassuring whisper for a dementia patient.
+        prompt = f"""Generate a gentle, dementia-safe audio whisper.
 
-Person: {name}
-Relation: {relation}
+PERSON DETAILS:
+- Name: {name}
+- Relation: {relation}
 {context_str}
 
-Rules:
-- Maximum 2 short sentences
-- Calm, warm, slow tone
-- Second-person voice ("This is...", "He's your...")
-- NO dates, timelines, or lists
-- NO emotional claims ("happy", "sad")
-- Include identity first, then ONE gentle context if available
+STRICT RULES (CRITICAL - DO NOT VIOLATE):
+❌ FORBIDDEN:
+- NO timelines (\"three days ago\", \"last week\", \"yesterday\")
+- NO inferred emotions (\"they seem happy\", \"you look tired\")
+- NO system language (\"your memory says\", \"we detected\")
+- NO lists or multiple facts
+- NO medical terms or clinical language
 
-Examples of good output:
-- "This is Rahul. He's your grandson who visits on weekends."
-- "This is Priya. She's your daughter and takes care of the garden with you."
-- "This is Dr. Sharma. He's your family doctor."
+✅ REQUIRED:
+- Exactly 1-2 simple sentences
+- Start with identity: \"This is [Name]\"
+- Use present tense only
+- Calm, warm, caregiver tone
+- If context exists, add ONE gentle routine statement
 
-Respond with ONLY the whisper text, nothing else."""
+SAFE PATTERNS:
+- Core identity: \"This is [Name]. [He/She]'s your [relation].\"
+- With context: \"This is [Name]. You usually [gentle routine].\"
+- Familiarity: \"You know this person well. You're safe with them.\"
+- Care-focused: \"[He/She] helps take care of you.\"
+
+EXAMPLES OF PERFECT OUTPUT:
+- \"This is Rahul. He's your grandson.\"
+- \"This is Ananya. She's your daughter and visits often.\"  
+- \"This is Doctor Sharma. You're safe with him.\"
+- \"This is your friend. You enjoy spending time together.\"
+
+Generate ONLY the whisper text (no quotes, no explanation)."""
 
         try:
             response = self.client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
                 messages=[
-                    {"role": "system", "content": "You are a calm, warm voice providing gentle reassurance to dementia patients. Speak simply and kindly."},
+                    {"role": "system", "content": "You are a compassionate caregiver providing gentle, grounding reassurance to someone with dementia. Speak as if leaning in quietly to whisper comfort. Never mention time, emotions, or system details. Keep it simple, warm, and safe."},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.5,
-                max_tokens=100,
+                temperature=0.4,  # Lower for more consistent, safe output
+                max_tokens=80,    # Shorter to enforce brevity
             )
             
             whisper_text = response.choices[0].message.content.strip()
@@ -265,14 +280,21 @@ Respond with ONLY the whisper text, nothing else."""
             # Remove quotes if present
             if whisper_text.startswith('"') and whisper_text.endswith('"'):
                 whisper_text = whisper_text[1:-1]
+            if whisper_text.startswith("'") and whisper_text.endswith("'"):
+                whisper_text = whisper_text[1:-1]
+            
+            # Ensure proper sentence structure for ElevenLabs
+            if not whisper_text.endswith(('.', '!', '?')):
+                whisper_text += '.'
             
             print(f"🗣️ Generated whisper: {whisper_text}")
             return whisper_text
             
         except Exception as e:
             print(f"⚠️ LLM whisper error: {e}")
-            # Simple fallback
-            return f"This is {name}. They are your {relation.lower()}."
+            # Ultra-safe fallback
+            return f"This is {name}. You're safe with them."
+
 
 
 # Singleton instance

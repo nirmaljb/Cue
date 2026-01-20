@@ -154,18 +154,22 @@ async def update_person(person_id: str, request: UpdatePersonRequest):
             
             image = decode_base64_image(request.image_base64)
             
-            # Extract and update face embedding
-            faces = face_recognition.extract_faces(image)
-            if faces:
-                embedding = face_recognition.get_embedding(faces[0]["face"])
-                
-                # Delete old embeddings and store new one
-                vector_db.delete_person_data(person_id)
-                vector_db.store_face_embedding(
-                    person_id=person_id,
-                    embedding=embedding,
-                    status="confirmed",
+            # Extract embedding from new image
+            embedding = face_recognition.extract_embedding_from_pil(image)
+            
+            if embedding is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="No face detected in the new image. Please upload a clear photo with a visible face.",
                 )
+            
+            # Delete old embeddings and store new one
+            vector_db.delete_person_data(person_id)
+            vector_db.store_face_embedding(
+                person_id=person_id,
+                embedding=embedding,
+                status="confirmed",
+            )
             
             # Save new image
             image_path = os.path.join(FACE_IMAGES_DIR, f"{person_id}.jpg")

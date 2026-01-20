@@ -11,6 +11,7 @@ export function CaregiverMode() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [notification, setNotification] = useState(null);
+    const [imageRefreshKey, setImageRefreshKey] = useState(Date.now()); // For cache busting
 
     // Enrollment form state
     const [showEnrollForm, setShowEnrollForm] = useState(false);
@@ -27,6 +28,7 @@ export function CaregiverMode() {
     const [editRelation, setEditRelation] = useState('');
     const [editContextNote, setEditContextNote] = useState('');
     const [editImage, setEditImage] = useState(null);
+    const [editCaptureMode, setEditCaptureMode] = useState(null); // 'webcam' or 'upload' for edit
     const [saving, setSaving] = useState(false);
 
     // Recording Toggle (localStorage persisted)
@@ -220,6 +222,7 @@ export function CaregiverMode() {
             );
             showNotification(`${editName} updated successfully!`, 'success');
             handleCancelEdit();
+            setImageRefreshKey(Date.now()); // Force image cache refresh
             fetchConfirmed();
         } catch (err) {
             showNotification(err.message || 'Failed to update person', 'error');
@@ -236,8 +239,47 @@ export function CaregiverMode() {
         const reader = new FileReader();
         reader.onloadend = () => {
             setEditImage(reader.result);
+            setEditCaptureMode(null);
         };
         reader.readAsDataURL(file);
+    };
+
+    // Start webcam for edit
+    const startEditWebcam = async () => {
+        try {
+            setEditCaptureMode('webcam');
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { width: 640, height: 480 }
+            });
+            streamRef.current = stream;
+
+            setTimeout(() => {
+                if (videoRef.current) {
+                    videoRef.current.srcObject = stream;
+                    videoRef.current.play().catch(console.error);
+                }
+            }, 100);
+        } catch (err) {
+            console.error('Webcam error:', err);
+            showNotification('Could not access webcam', 'error');
+            setEditCaptureMode(null);
+        }
+    };
+
+    // Capture from webcam for edit
+    const captureEditFromWebcam = () => {
+        if (!videoRef.current) return;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = videoRef.current.videoWidth;
+        canvas.height = videoRef.current.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(videoRef.current, 0, 0);
+
+        const imageBase64 = canvas.toDataURL('image/jpeg', 0.8);
+        setEditImage(imageBase64);
+        stopWebcam();
+        setEditCaptureMode(null);
     };
 
     // Cleanup webcam on unmount
@@ -479,7 +521,7 @@ export function CaregiverMode() {
                                         {/* Face Hero */}
                                         <div className="card-image-container">
                                             <img
-                                                src={`http://localhost:8000${person.face_image_url}`}
+                                                src={`http://localhost:8000${person.face_image_url}?t=${imageRefreshKey}`}
                                                 alt={person.name}
                                             />
                                         </div>
@@ -536,21 +578,42 @@ export function CaregiverMode() {
                         </div>
 
                         <div className="photo-section">
-                            <div className="current-photo">
-                                <img
-                                    src={editImage || `http://localhost:8000${editingPerson.face_image_url}`}
-                                    alt={editingPerson.name}
-                                />
-                            </div>
-                            <label className="btn-photo">
-                                📷 Change Photo
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={handleEditFileUpload}
-                                    style={{ display: 'none' }}
-                                />
-                            </label>
+                            {editCaptureMode === 'webcam' ? (
+                                <div className="webcam-section">
+                                    <video ref={videoRef} autoPlay playsInline />
+                                    <div className="webcam-controls">
+                                        <button onClick={captureEditFromWebcam} className="btn-capture">
+                                            📸 Capture
+                                        </button>
+                                        <button onClick={() => { stopWebcam(); setEditCaptureMode(null); }} className="btn-cancel">
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="current-photo">
+                                        <img
+                                            src={editImage || `http://localhost:8000${editingPerson.face_image_url}?t=${imageRefreshKey}`}
+                                            alt={editingPerson.name}
+                                        />
+                                    </div>
+                                    <div className="photo-buttons">
+                                        <button onClick={startEditWebcam} className="btn-photo">
+                                            📷 Webcam
+                                        </button>
+                                        <label className="btn-photo">
+                                            📁 Upload
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={handleEditFileUpload}
+                                                style={{ display: 'none' }}
+                                            />
+                                        </label>
+                                    </div>
+                                </>
+                            )}
                         </div>
 
                         <div className="form-actions">
