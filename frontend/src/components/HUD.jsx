@@ -3,9 +3,7 @@ import './HUD.css';
 
 /**
  * Dementia-Safe HUD Overlay (Cue)
- * Refined Logic:
- * - Content: Name + Relation ONLY. (Contextual notes removed from overlay)
- * - Positioning: Loosely anchored to face, upper third preferred.
+ * Simple, clean positioning that follows the face
  */
 export function HUD({ data, position }) {
     if (!data) return null;
@@ -14,12 +12,20 @@ export function HUD({ data, position }) {
     const x = position ? position.x : 0.5;
     const y = position ? position.y : 0.3;
 
-    // Calculate dynamic position
-    // Anchor: To the right of the face, slightly above eye level
-    // Increased offsets to strictly prevent face overlap (Safe Zone)
+    // Simple offset positioning
+    // Smoothing handled by useFaceTracking
     const style = {
-        left: `min(65%, calc(${x * 100}% + 20vw))`, // Offset right by 20% viewport width
-        top: `clamp(10%, calc(${y * 100}% - 30vh), 40%)`, // Offset up by 30% viewport height
+        position: 'absolute',
+
+        // Vertical: Offset slightly above face center
+        top: `calc(${y * 100}% - 100px)`,
+
+        // Horizontal: Offset to the right of face
+        left: `calc(${x * 100}% + 80px)`,
+
+        maxWidth: '300px',
+        zIndex: 1000,
+        pointerEvents: 'none',
     };
 
     return (
@@ -27,10 +33,8 @@ export function HUD({ data, position }) {
             {/* Person's Name */}
             <h2 className="hud-name">{data.name}</h2>
 
-            {/* Relationship Descriptor */}
+            {/* Relationship Descriptor in Green Pill */}
             <span className="hud-relation">{data.relation}</span>
-
-            {/* Contextual Note REMOVED per specific design request for minimal overlay */}
         </div>
     );
 }

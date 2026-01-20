@@ -517,6 +517,42 @@
     background: #6B8A7A;
 }
 
+/* General webcam controls for enrollment form */
+.webcam-controls {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.webcam-controls button {
+    flex: 1;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    border: none;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 500;
+}
+
+.btn-capture {
+    background: #8DA399;
+    color: white;
+}
+
+.btn-capture:hover {
+    background: #6B8A7A;
+    transform: translateY(-1px);
+}
+
+.btn-cancel {
+    background: #E8E8E8;
+    color: #333;
+}
+
+.btn-cancel:hover {
+    background: #D0D0D0;
+}
 
 /* *** FORM STYLING (Crucial Fix) *** */
 .enroll-form {

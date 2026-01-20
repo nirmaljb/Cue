@@ -6,10 +6,7 @@
     z-index: 100;
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    /* Left aligned as per Swiss style */
     gap: 0.5rem;
-    /* Tighter gap for Name/Relation pair */
     width: auto;
 
     /* Panel Styling */
@@ -21,6 +18,10 @@
     /* Very subtle shadow */
     backdrop-filter: none;
     /* Explicitly no blur */
+
+    /* Default: Align Left */
+    align-items: flex-start;
+    text-align: left;
 }
 
 /* Typography Hierarchy */
@@ -36,13 +37,13 @@
 
 .hud-relation {
     font-size: 1.5rem;
-    font-weight: 400;
-    color: var(--text-secondary);
-    /* Softer gray */
-    background: rgba(249, 249, 247, 0.85);
-    /* Slight background for readability */
-    padding: 0.25rem 0.75rem;
-    border-radius: var(--radius-sm);
+    font-weight: 500;
+    color: white;
+    /* Green pill styling */
+    background: #8DA399;
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    /* Full pill shape */
     display: inline-block;
 }
 

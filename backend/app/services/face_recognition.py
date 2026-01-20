@@ -1,66 +1,67 @@
-"""Face recognition service using FaceNet for embedding extraction."""
+"""Face recognition service using InsightFace for embedding extraction."""
 
-import torch
-from facenet_pytorch import MTCNN, InceptionResnetV1
-from PIL import Image
 import numpy as np
 from typing import Optional
+from PIL import Image
+import cv2
+import warnings
+
+# Suppress InsightFace's scikit-image deprecation warning
+warnings.filterwarnings('ignore', category=FutureWarning, module='insightface')
 
 from app.utils.image import decode_base64_image
 
 
 class FaceRecognitionService:
-    """Service for face detection and embedding extraction using FaceNet."""
+    """Service for face detection and embedding extraction using InsightFace."""
     
     def __init__(self):
-        # Device selection priority: MPS (Apple Silicon) > CUDA > CPU
-        # Note: We use hybrid approach due to MPS limitations with MTCNN
-        if torch.backends.mps.is_available():
-            self.embedding_device = torch.device("mps")  # For InceptionResnetV1
-            self.detection_device = torch.device("cpu")  # For MTCNN (has MPS bug)
-            print("🍎 Apple Silicon GPU (MPS) detected - using hybrid CPU+MPS")
-            print("   - Face detection (MTCNN): CPU")
-            print("   - Embedding extraction (ResNet): MPS")
-        elif torch.cuda.is_available():
-            self.embedding_device = torch.device("cuda")
-            self.detection_device = torch.device("cuda")
-            print("🎮 CUDA GPU detected")
-        else:
-            self.embedding_device = torch.device("cpu")
-            self.detection_device = torch.device("cpu")
-            print("💻 Using CPU (no GPU acceleration)")
-        
-        self.mtcnn: Optional[MTCNN] = None
-        self.resnet: Optional[InceptionResnetV1] = None
+        self.model = None
         self._initialized = False
+        self.device = None
     
     def initialize(self):
-        """Initialize the face detection and embedding models."""
+        """Initialize the InsightFace model."""
         if self._initialized:
             return
         
-        print("🔄 Loading FaceNet models...")
+        print("🔄 Loading InsightFace buffalo_s model...")
         
-        # MTCNN for face detection and alignment (on CPU to avoid MPS bug)
-        self.mtcnn = MTCNN(
-            image_size=160,
-            margin=0,
-            min_face_size=20,
-            thresholds=[0.6, 0.7, 0.7],
-            factor=0.709,
-            post_process=True,
-            device=self.detection_device,
-            keep_all=False,  # Only keep the largest/most confident face
-        )
-        
-        # InceptionResnetV1 for face embeddings (512-dim) - on MPS/CUDA if available
-        self.resnet = InceptionResnetV1(
-            pretrained="vggface2",
-            device=self.embedding_device,
-        ).eval()
-        
-        self._initialized = True
-        print(f"✅ FaceNet models loaded (detection: {self.detection_device}, embedding: {self.embedding_device})")
+        try:
+            import insightface
+            from insightface.app import FaceAnalysis
+            
+            # Initialize with buffalo_s model (balanced speed/accuracy)
+            # providers: try CUDA → CoreML → CPU
+            self.model = FaceAnalysis(
+                name='buffalo_s',
+                providers=['CUDAExecutionProvider', 'CoreMLExecutionProvider', 'CPUExecutionProvider']
+            )
+            
+            # Prepare model with specific settings
+            self.model.prepare(
+                ctx_id=0,           # GPU device ID (0 = first GPU, -1 = CPU)
+                det_size=(640, 640) # Detection size (larger = more accurate but slower)
+            )
+            
+            # Detect which provider is actually being used
+            if hasattr(self.model, 'det_model') and hasattr(self.model.det_model, 'session'):
+                provider = self.model.det_model.session.get_providers()[0]
+                if 'CUDA' in provider:
+                    self.device = "CUDA GPU"
+                elif 'CoreML' in provider:
+                    self.device = "Apple Silicon (CoreML)"
+                else:
+                    self.device = "CPU"
+            else:
+                self.device = "CPU"
+            
+            self._initialized = True
+            print(f"✅ InsightFace buffalo_s loaded on {self.device}")
+            
+        except Exception as e:
+            print(f"❌ Failed to load InsightFace: {e}")
+            raise
     
     def extract_embedding(self, image_base64: str) -> Optional[list[float]]:
         """Extract face embedding from a base64 image.
@@ -77,25 +78,26 @@ class FaceRecognitionService:
         # Decode image
         image = decode_base64_image(image_base64)
         
-        # Detect face and get aligned face tensor
-        face_tensor = self.mtcnn(image)
+        # Convert PIL to numpy array (RGB → BGR for OpenCV/InsightFace)
+        image_np = np.array(image)
+        if image_np.shape[2] == 4:  # RGBA → RGB
+            image_np = cv2.cvtColor(image_np, cv2.COLOR_RGBA2RGB)
+        image_bgr = cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR)
         
-        if face_tensor is None:
+        # Detect faces and extract embeddings
+        faces = self.model.get(image_bgr)
+        
+        if not faces or len(faces) == 0:
             return None
         
-        # Ensure batch dimension
-        if face_tensor.dim() == 3:
-            face_tensor = face_tensor.unsqueeze(0)
+        # Get the largest/most confident face
+        face = faces[0]
         
-        # Move to embedding device (MPS/CUDA/CPU)
-        face_tensor = face_tensor.to(self.embedding_device)
+        # Extract embedding (already normalized by InsightFace)
+        embedding = face.embedding
         
-        # Extract embedding
-        with torch.no_grad():
-            embedding = self.resnet(face_tensor)
-        
-        # Convert to list of floats
-        embedding_list = embedding.squeeze().cpu().numpy().tolist()
+        # Convert to Python list for JSON serialization
+        embedding_list = embedding.tolist()
         
         return embedding_list
     
@@ -111,25 +113,26 @@ class FaceRecognitionService:
         if not self._initialized:
             self.initialize()
         
-        # Detect face and get aligned face tensor
-        face_tensor = self.mtcnn(image)
+        # Convert PIL to numpy array (RGB → BGR)
+        image_np = np.array(image)
+        if image_np.shape[2] == 4:  # RGBA → RGB
+            image_np = cv2.cvtColor(image_np, cv2.COLOR_RGBA2RGB)
+        image_bgr = cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR)
         
-        if face_tensor is None:
+        # Detect faces and extract embeddings
+        faces = self.model.get(image_bgr)
+        
+        if not faces or len(faces) == 0:
             return None
         
-        # Ensure batch dimension
-        if face_tensor.dim() == 3:
-            face_tensor = face_tensor.unsqueeze(0)
+        # Get the largest/most confident face
+        face = faces[0]
         
-        # Move to embedding device (MPS/CUDA/CPU)
-        face_tensor = face_tensor.to(self.embedding_device)
+        # Extract embedding (already normalized)
+        embedding = face.embedding
         
-        # Extract embedding
-        with torch.no_grad():
-            embedding = self.resnet(face_tensor)
-        
-        # Convert to list of floats
-        embedding_list = embedding.squeeze().cpu().numpy().tolist()
+        # Convert to Python list
+        embedding_list = embedding.tolist()
         
         return embedding_list
 
