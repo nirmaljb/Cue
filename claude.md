@@ -51,7 +51,7 @@ Dementia patients struggle to recognize loved ones. Cue provides:
 │                    BACKEND (FastAPI)                        │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  │
 │  │ Face Rec │  │   LLM    │  │   STT    │  │   TTS    │  │
-│  │ (FaceNet)│  │  (Groq)  │  │ (Groq)   │  │(ElevenLabs)│ │
+│  │InsightFace│ │  (Groq)  │  │ (Groq)   │  │(ElevenLabs)│ │
 │  └──────────┘  └──────────┘  └──────────┘  └──────────┘  │
 └────────┬───────────────┬──────────────────────────────────┘
          │               │
@@ -71,7 +71,7 @@ Dementia patients struggle to recognize loved ones. Cue provides:
    - **Neo4j**: Graph database for relationships, metadata, and structured data
 
 2. **Hybrid Processing**:
-   - **Local**: FaceNet (privacy, speed)
+   - **Local**: InsightFace with ONNX (privacy, 5-10x faster than FaceNet)
    - **Cloud**: Groq LLM, Groq Whisper, ElevenLabs (quality, scalability)
 
 3. **Real-time Loop**: 300ms face recognition polling with multi-frame validation
@@ -134,11 +134,11 @@ hackathon/
 
 ### Backend
 - **FastAPI** - Async Python web framework
-- **FaceNet** (facenet-pytorch) - Face embedding extraction (512-dim)
+- **InsightFace** (buffalo_s model) - Face embedding extraction (512-dim, ONNX-accelerated)
 - **Groq API**:
-  - `gpt-oss-120b` - LLM for content generation
+  - `llama-3.3-70b-versatile` - LLM for content generation
   - `whisper-large-v3` - Speech-to-text transcription
-- **ElevenLabs** - Text-to-speech for audio cues
+- **ElevenLabs** - Text-to-speech (Priyanka voice) for audio cues
 - **SentenceTransformers** - Memory embedding (all-MiniLM-L6-v2, 384-dim)
 
 ### Databases
@@ -222,19 +222,29 @@ useEffect(() => {
 **Purpose**: Display person info over video
 
 **Positioning**:
-- Uses face position from MediaPipe
-- Offset to avoid face overlap
+- Simple offset: 80px right, 100px up from face center
+- Smoothing handled by Lerp in `useFaceTracking.js`
 - High contrast for readability
+
+**Styling**:
+- Name: Large, bold text
+- Relation: Green pill badge (#8DA399)
+- Semi-transparent white background
 
 ### Backend Services
 
-#### 1. `face_recognition.py` - FaceNet Service
+#### 1. `face_recognition.py` - InsightFace Service
 **Key Methods**:
 - `extract_embedding(image_base64)`: Base64 → PIL → Face Detection → 512-dim vector
-- `extract_faces(image)`: Returns all detected faces
-- `get_embedding(face_tensor)`: Face → Embedding
+- `extract_embedding_from_pil(image)`: PIL Image → Face Detection → 512-dim vector
 
-**Model**: InceptionResnetV1 (pretrained on VGGFace2)
+**Model**: InsightFace buffalo_s (ONNX runtime)
+**Performance**: 
+- Mac (CoreML): ~100-150ms per frame
+- Windows (CUDA GPU): ~20-50ms per frame
+- CPU fallback: ~200-300ms per frame
+
+**Device Selection**: Automatically uses best available (CUDA → CoreML → CPU)
 
 #### 2. `vector_db.py` - Qdrant Service
 **Collections**:
@@ -264,7 +274,7 @@ useEffect(() => {
 - `get_memories(person_id, limit=10)`
 
 #### 4. `llm.py` - Groq LLM Service
-**Model**: `gpt-oss-120b` via Groq API
+**Model**: `llama-3.3-70b-versatile` via Groq API
 
 **Methods**:
 
@@ -303,15 +313,9 @@ def transcribe(audio_base64):
 #### 6. `elevenlabs.py` (TTS Service)
 **API**: ElevenLabs Text-to-Speech
 
-**Voice Settings**:
-```python
-{
-    "stability": 0.75,        # Calm, consistent
-    "similarity_boost": 0.5,  # Natural variation
-    "style": 0.0,             # No dramatic style
-    "use_speaker_boost": False
-}
-```
+**Voice**: Priyanka (jsCqWAovK2LkecY7zXl4) - Playful, Bright, Warm
+
+**Settings**: Default ElevenLabs settings (natural, clear speech)
 
 **Output**: MP3 audio bytes (base64 encoded for frontend)
 

@@ -294,7 +294,291 @@ Generate ONLY the whisper text (no quotes, no explanation)."""
             print(f"⚠️ LLM whisper error: {e}")
             # Ultra-safe fallback
             return f"This is {name}. You're safe with them."
+    def extract_routines_from_memories(self, memories: list[dict]) -> list[dict]:
+        """Extract routine patterns from conversation memories.
+        
+        Args:
+            memories: List of memory dicts with 'summary' field
+        
+        Returns:
+            List of routines: [{"text": "...", "confidence": 0.X, "pattern_type": "..."}]
+        """
+        if not self._initialized:
+            self.initialize()
+        
+        if not memories:
+            return []
+        
+        # Build memory summary text
+        memory_summaries = "\n".join(
+            f"{i+1}. {m.get('summary', '')}" 
+            for i, m in enumerate(memories[:20])  # Limit to 20 most recent
+        )
+        
+        prompt = f"""Analyze these conversation summaries to find SPECIFIC routine patterns:
 
+{memory_summaries}
+
+Extract ONLY concrete, specific patterns. REJECT generic/vague statements.
+
+✅ GOOD Examples (Specific):
+- "You both talk about cricket matches."
+- "You discuss coding competitions."
+- "You visit a chicken shop together."
+
+❌ BAD Examples (Too generic):
+- "You often reminisce about the past."
+- "You enjoy talking together."
+- "You share memories."
+
+Requirements:
+- Must mention SPECIFIC activities, topics, or places
+- Must be concrete and meaningful
+- Only include if clearly mentioned
+- Skip vague patterns
+
+Return as JSON array:
+[
+  {{"text": "You both talk about cricket.", "confidence": 0.85, "pattern_type": "emotional"}},
+  {{"text": "You discuss coding daily.", "confidence": 0.75, "pattern_type": "action"}}
+]
+
+Return empty array [] if NO specific patterns found."""
+        
+        try:
+            response = self.client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[
+                    {"role": "system", "content": "You extract routine patterns from conversations. Always respond in valid JSON array format."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.3,
+                max_tokens=300,
+            )
+            
+            content = response.choices[0].message.content.strip()
+            print(f"🤖 LLM routine extraction response: {content[:300] if content else 'EMPTY'}")
+            
+            # Parse JSON
+            import json
+            try:
+                routines = json.loads(content)
+                if isinstance(routines, list):
+                    print(f"✅ Successfully parsed {len(routines)} routines")
+                    return routines
+                else:
+                    print(f"⚠️ LLM returned non-list type: {type(routines)}")
+                    return []
+            except json.JSONDecodeError as je:
+                print(f"⚠️ Failed to parse routines JSON")
+                print(f"   Content: {content[:200] if content else 'EMPTY'}")
+                print(f"   Error: {je}")
+                return []
+                
+        except Exception as e:
+            print(f"⚠️ Routine extraction error: {e}")
+            return []
+    
+    def select_best_routine(self, routines: list[dict], recent_memory: str = None) -> Optional[str]:
+        """Select the most relevant routine for display.
+        
+        Args:
+            routines: List of routine dicts
+            recent_memory: Optional recent memory summary for context
+        
+        Returns:
+            Selected routine text or None
+        """
+        if not self._initialized:
+            self.initialize()
+        
+        if not routines:
+            return None
+        
+        if len(routines) == 1:
+            return routines[0]["text"]
+        
+        # Build routines list
+        routine_list = "\n".join(
+            f"{i+1}. {r['text']} (confidence: {r.get('confidence', 0.5)})"
+            for i, r in enumerate(routines[:5])
+        )
+        
+        context_text = f"Recent conversation: {recent_memory}" if recent_memory else "No recent context."
+        
+        prompt = f"""Choose the ONE most relevant routine to display:
+    
+    Available routines:
+    {routine_list}
+    
+    {context_text}
+    
+    Select the routine that is:
+    1. Most relevant to recent conversation (if any)
+    2. Most comforting/reassuring
+    3. Most concrete (avoid vague patterns)
+    
+    Return ONLY the chosen routine text, nothing else."""
+        
+        try:
+            response = self.client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[
+                    {"role": "system", "content": "You select the most relevant routine for display. Return ONLY the routine text."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.4,
+                max_tokens=50,
+            )
+            
+            selected = response.choices[0].message.content.strip()
+            # Remove quotes if present
+            selected = selected.strip('"').strip("'")
+            return selected
+            
+        except Exception as e:
+            print(f"⚠️ Routine selection error: {e}")
+            # Fallback to highest confidence
+            return max(routines, key=lambda r: r.get('confidence', 0.5))["text"]
+    
+    def transform_contextual_note_to_routine(self, contextual_note: str) -> str:
+        """Transform contextual note into routine format (fallback when no memories).
+        
+        Args:
+            contextual_note: Caregiver's note (e.g., "Grandson who visits on weekends")
+        
+        Returns:
+            Routine-style sentence (e.g., "Your grandson usually visits on weekends.")
+        """
+        if not self._initialized:
+            self.initialize()
+        
+        if not contextual_note or contextual_note.strip() == "":
+            return "You know this person well."
+        
+        prompt = f"""Transform this contextual note into a warm, routine-style sentence:
+    
+    Input: "{contextual_note}"
+    
+    Format like:
+    - "You usually have tea together."
+    - "You both enjoy talking about cricket."
+    - "Your grandson usually visits on weekends."
+    
+    Make it personal, warm, and present-tense.
+    Return ONLY the transformed sentence, nothing else."""
+        
+        try:
+            response = self.client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[
+                    {"role": "system", "content": "You transform contextual notes into warm routine sentences. Return ONLY the sentence."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.3,
+                max_tokens=30,
+            )
+            
+            routine = response.choices[0].message.content.strip()
+            # Remove quotes if present
+            routine = routine.strip('"').strip("'")
+            
+            # Check if LLM returned empty
+            if not routine or routine.strip() == "":
+                print(f"⚠️ LLM returned empty for contextual note: '{contextual_note}'")
+                # Fallback: use first 8 words or original
+                words = contextual_note.split()
+                if len(words) > 8:
+                    return ' '.join(words[:8]) + "."
+                return contextual_note
+            
+            print(f"✅ Transformed contextual note: '{contextual_note}' → '{routine}'")
+            return routine
+            
+        except Exception as e:
+            print(f"⚠️ Contextual note transformation error: {e}")
+            # Fallback
+            return f"You know {contextual_note}."
+    
+    def condense_to_few_words(self, text: str) -> str:
+        """Condense text smartly - keep if already short and meaningful, otherwise condense.
+        
+        Args:
+            text: Text to condense
+        
+        Returns:
+            Short, condensed version (prefer full sentences if meaningful)
+        """
+        if not self._initialized:
+            self.initialize()
+        
+        # If empty or None, return original
+        if not text or text.strip() == "":
+            return text if text else ""
+        
+        # If already short (under 8 words), keep it
+        if len(text.split()) <= 8:
+            return text
+        
+        prompt = f"""Condense this text to be SHORT but meaningful:
+
+Input: "{text}"
+
+Rules:
+- If already clear and concise → Keep it as is
+- If too wordy → Condense to essential meaning
+- Prefer short full sentences over fragments
+- Keep warmth and context
+- Present tense
+
+Examples:
+"He is currently in his second year, pursuing B.Tech Computer Science" → "He is studying in University." OR "He is in his second year." OR "He is getting his engineering degree."
+"You usually have tea together in the evening" → Keep it (already good)
+"Your grandson who visits every weekend and brings flowers" → "Visits every weekend."
+
+Return ONLY the condensed text, nothing else."""
+        
+        try:
+            response = self.client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[
+                    {"role": "system", "content": "You condense text smartly. Keep if already good, condense if wordy. Return ONLY the text."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.3,
+                max_tokens=30,
+            )
+            
+            condensed = response.choices[0].message.content.strip()
+            # Remove quotes if present
+            condensed = condensed.strip('"').strip("'")
+            
+            # If LLM returned empty, use original
+            if not condensed or condensed == "":
+                print(f"⚠️ LLM returned empty, using original: {text[:50]}")
+                # Fallback: take first 10 words
+                words = text.split()
+                if len(words) > 10:
+                    return ' '.join(words[:10])
+                return text
+            
+            # Ensure reasonable length (max 12 words)
+            if len(condensed.split()) > 12:
+                # Fallback: take first 10 words
+                condensed = ' '.join(text.split()[:10])
+            
+            return condensed
+            
+        except Exception as e:
+            print(f"⚠️ Text condensing error: {e}")
+            # Fallback: take first 10 words or return original if short
+            words = text.split()
+            if len(words) > 10:
+                return ' '.join(words[:10])
+            return text
+    
+    
+    # Singleton instance
 
 
 # Singleton instance

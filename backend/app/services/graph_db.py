@@ -92,6 +92,11 @@ class GraphDBService:
                 CREATE CONSTRAINT memory_id IF NOT EXISTS
                 FOR (m:Memory) REQUIRE m.id IS UNIQUE
             """)
+            # Unique constraint on Routine id
+            session.run("""
+                CREATE CONSTRAINT routine_id IF NOT EXISTS
+                FOR (r:Routine) REQUIRE r.id IS UNIQUE
+            """)
     
     def health_check(self) -> bool:
         """Check if Neo4j is connected and healthy."""
@@ -306,6 +311,136 @@ class GraphDBService:
                 MATCH (m:Memory {id: $id})
                 DETACH DELETE m
             """, id=memory_id)
+    
+    # ============================================
+    # Routines
+    # ============================================
+    
+    @retry_on_connection_error()
+    def create_routine(
+        self,
+        person_id: str,
+        text: str,
+        confidence: float,
+        source: str = "memories"
+    ) -> str:
+        """Create a routine and link to person.
+        
+        Args:
+            person_id: Person ID
+            text: Routine text (e.g., "You usually have tea together.")
+            confidence: Confidence score 0.0-1.0
+            source: "memories" or "contextual_note"
+        
+        Returns:
+            routine_id: Created routine ID
+        """
+        routine_id = str(uuid.uuid4())
+        
+        with self.driver.session() as session:
+            session.run("""
+                MATCH (p:Person {id: $person_id})
+                CREATE (r:Routine {
+                    id: $routine_id,
+                    person_id: $person_id,
+                    text: $text,
+                    confidence: $confidence,
+                    source: $source,
+                    created_at: datetime(),
+                    last_updated: datetime()
+                })
+                CREATE (p)-[:HAS_ROUTINE]->(r)
+            """, person_id=person_id, routine_id=routine_id, text=text,
+                confidence=confidence, source=source)
+        
+        return routine_id
+    
+    @retry_on_connection_error()
+    def get_routines(self, person_id: str) -> list[dict]:
+        """Get all routines for a person.
+        
+        Returns:
+            List of routine dicts with id, text, confidence, source
+        """
+        with self.driver.session() as session:
+            result = session.run("""
+                MATCH (p:Person {id: $person_id})-[:HAS_ROUTINE]->(r:Routine)
+                RETURN r.id as id, r.text as text, r.confidence as confidence,
+                       r.source as source, r.created_at as created_at
+                ORDER BY r.confidence DESC, r.created_at DESC
+            """, person_id=person_id)
+            
+            routines = []
+            for record in result:
+                routines.append({
+                    "id": record["id"],
+                    "text": record["text"],
+                    "confidence": record["confidence"],
+                    "source": record["source"],
+                    "created_at": record["created_at"]
+                })
+            
+            return routines
+    
+    @retry_on_connection_error()
+    def delete_all_routines(self, person_id: str):
+        """Delete all routines for a person (before re-analysis)."""
+        with self.driver.session() as session:
+            session.run("""
+                MATCH (p:Person {id: $person_id})-[:HAS_ROUTINE]->(r:Routine)
+                DETACH DELETE r
+            """, person_id=person_id)
+    
+    @retry_on_connection_error()
+    def get_memory_count(self, person_id: str) -> int:
+        """Get total number of memories for a person."""
+        with self.driver.session() as session:
+            result = session.run("""
+                MATCH (p:Person {id: $person_id})-[:HAS_MEMORY]->(m:Memory)
+                RETURN count(m) as count
+            """, person_id=person_id)
+            
+            record = result.single()
+            return record["count"] if record else 0
+    
+    # ============================================
+    # Worker Support Methods
+    # ============================================
+    
+    @retry_on_connection_error()
+    def update_person_timestamp(self, person_id: str, field: str):
+        """Update a timestamp field on person node."""
+        with self.driver.session() as session:
+            session.run(f"""
+                MATCH (p:Person {{id: $person_id}})
+                SET p.{field} = datetime()
+            """, person_id=person_id)
+    
+    @retry_on_connection_error()
+    def get_people_needing_routine_analysis(self) -> list[dict]:
+        """Find people who need routine extraction.
+        
+        Criteria:
+        - Has memories (count > 0)
+        - Memory count is even (divisible by 2)
+        - Never analyzed OR last analysis before last memory save
+        """
+        with self.driver.session() as session:
+            result = session.run("""
+                MATCH (p:Person)-[:HAS_MEMORY]->(m:Memory)
+                WITH p, count(m) as memory_count
+                WHERE memory_count % 2 = 0 
+                  AND (p.last_routine_analysis IS NULL 
+                       OR p.last_routine_analysis < p.last_memory_saved)
+                RETURN p.id as person_id, p.name as name, memory_count
+                LIMIT 10
+            """)
+            return [dict(record) for record in result]
+    
+    @retry_on_connection_error()
+    def mark_routine_analysis_complete(self, person_id: str):
+        """Mark that routine analysis was completed."""
+        self.update_person_timestamp(person_id, "last_routine_analysis")
 
 
 # Singleton instance

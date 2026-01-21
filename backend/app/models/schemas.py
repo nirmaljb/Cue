@@ -49,6 +49,7 @@ class HUDContextResponse(BaseModel):
     name: Optional[str] = None
     relation: Optional[str] = None
     contextual_note: Optional[str] = None
+    routine: Optional[str] = None  # NEW: LLM-selected routine or null
     # Removed emotionalCue and familiarity for Dementia-Safe design
     speak: bool = False
     speechText: Optional[str] = None

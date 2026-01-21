@@ -85,6 +85,10 @@ async def save_memory(request: MemorySaveRequest):
     graph_db.update_familiarity(request.person_id, increment=0.05)
     graph_db.update_last_seen(request.person_id)
     
+    # Update timestamp for background worker to pick up
+    graph_db.update_person_timestamp(request.person_id, "last_memory_saved")
+    print(f"📝 Memory saved, timestamp updated for background worker")
+    
     return MemorySaveResponse(
         status="saved",
         memory_id=memory_id,

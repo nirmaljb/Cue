@@ -42,13 +42,51 @@ async def get_hud_context(request: HUDContextRequest):
             detail="Person not found",
         )
     
+    
     # Dementia-Safe: Return static contextual note
     # No AI emotional analysis
+    
+    # Fetch routines
+    routines = graph_db.get_routines(request.person_id)
+    selected_routine = None
+    display_contextual_note = None
+    
+    if routines:
+        # Get recent memory for context
+        memories = graph_db.get_memories(request.person_id, limit=1)
+        recent_memory = memories[0].get("summary") if memories else None
+        
+        # LLM selects best routine
+        selected_routine = llm_service.select_best_routine(routines, recent_memory)
+        
+        # Condense to keep HUD clean
+        if selected_routine:
+            selected_routine = llm_service.condense_to_few_words(selected_routine)
+            print(f"✅ Condensed routine: {selected_routine}")
+            # Don't show contextual note when we have a routine
+            display_contextual_note = None
+        else:
+            # Failed to select routine, fall back to contextual note
+            contextual_note = person.get("contextual_note", "")
+            if contextual_note and contextual_note.strip():
+                display_contextual_note = llm_service.condense_to_few_words(contextual_note)
+                print(f"✅ Using contextual note (no routine selected): {display_contextual_note}")
+    else:
+        # No routines yet - use contextual note as fallback
+        contextual_note = person.get("contextual_note", "")
+        if contextual_note and contextual_note.strip():
+            # Transform and condense contextual note
+            routine_style = llm_service.transform_contextual_note_to_routine(contextual_note)
+            selected_routine = llm_service.condense_to_few_words(routine_style)
+            print(f"✅ Using contextual note fallback as routine: {selected_routine}")
+        else:
+            print(f"ℹ️ No routines or contextual note for person {request.person_id}")
     
     return HUDContextResponse(
         name=person.get("name"),
         relation=person.get("relation"),
-        contextual_note=person.get("contextual_note"),
+        contextual_note=display_contextual_note,  # Only set if no routine available
+        routine=selected_routine,
         speak=False,
         speechText=None,
     )

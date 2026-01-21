@@ -7,6 +7,9 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    min-width: 250px;
+    max-width: 25vw;
+    /* Never more than 25% of screen width */
     width: auto;
 
     /* Panel Styling */
@@ -45,6 +48,22 @@
     border-radius: 999px;
     /* Full pill shape */
     display: inline-block;
+}
+
+.hud-routine {
+    /* Calm over Clever: Plain text, no decoration */
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    font-size: 1.4rem;
+    font-weight: 400;
+    /* Medium weight, NOT thin or bold */
+    color: #666;
+    /* Soft gray, readable but secondary */
+    line-height: 1.5;
+    margin-top: 0.75rem;
+    /* Generous spacing */
+    margin-bottom: 0;
+    max-width: 100%;
+    /* No italics, no caps, no condensed fonts */
 }
 
 .hud-cue {
