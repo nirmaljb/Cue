@@ -294,6 +294,92 @@ Generate ONLY the whisper text (no quotes, no explanation)."""
             print(f"⚠️ LLM whisper error: {e}")
             # Ultra-safe fallback
             return f"This is {name}. You're safe with them."
+    
+    def generate_whisper(self, name: str, relation: str, routines: list[dict] = None, contextual_note: str = None) -> str:
+        """Generate 3-4 sentence dementia-safe whisper for ElevenLabs TTS.
+        
+        Creates structured comfort message using database routines.
+        
+        Args:
+            name: Person's name
+            relation: Relationship (e.g., "your son")
+            routines: List of routine dicts from database (optional)
+            contextual_note: Caregiver's note (optional, fallback)
+        
+        Returns:
+            Whisper text (3-4 sentences, ~30 words max)
+        """
+        if not self._initialized:
+            self.initialize()
+        
+        # Build routine context for LLM
+        routine_text = ""
+        if routines and len(routines) > 0:
+            # Use top 2 routines
+            routine_text = "\n".join([f"- {r['text']}" for r in routines[:2]])
+        
+        # Prepare prompt
+        if routines and len(routines) > 0:
+            # WITH MEMORIES: Use routines - MUST be 4 sentences
+            prompt = f"""You MUST generate EXACTLY 4 separate sentences for a dementia patient.
+
+Person: {name}
+Relation: {relation}
+Known routines:
+{routine_text}
+
+OUTPUT FORMAT (REQUIRED - ALL 4 SENTENCES):
+Sentence 1: "This is [name]. He's/She's your [relation]."
+Sentence 2: "You usually feel [comfort feeling] around him/her."
+Sentence 3: "[Use one of the routines above]"
+Sentence 4: "[Reassurance: You can take your time. OR You're safe here. OR There's no rush.]"
+
+EXAMPLE OUTPUT:
+This is Rahul. He's your close friend.
+You usually feel comfortable around him.
+You both enjoy talking about cricket.
+You can take your time.
+
+CRITICAL: You MUST output exactly 4 sentences. Do NOT combine them into 1-2 sentences."""
+        else:
+            # NO MEMORIES: Short fallback
+            note = f" {contextual_note}" if contextual_note else ""
+            prompt = f"""Generate a SHORT, dementia-safe whisper for a person with dementia seeing someone they know.
+
+Person: {name}
+Relation: {relation}{note}
+
+Create 1-2 SHORT sentences:
+- Present tense
+- Simple and warm
+- Reassuring
+
+Example: "This is {name}. You're safe with them."
+
+Return ONLY the sentences, nothing else."""
+        
+        try:
+            response = self.client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[
+                    {"role": "system", "content": "You create warm, dementia-safe whispers. Always use present tense and simple language."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.4,
+                max_tokens=150,
+            )
+            
+            whisper_text = response.choices[0].message.content.strip()
+            # Remove quotes if present
+            whisper_text = whisper_text.strip('"').strip("'")
+            
+            print(f"🗣️ Generated whisper: {whisper_text}")
+            return whisper_text
+            
+        except Exception as e:
+            print(f"⚠️ LLM whisper error: {e}")
+            # Ultra-safe fallback
+            return f"This is {name}. You're safe with them."
     def extract_routines_from_memories(self, memories: list[dict]) -> list[dict]:
         """Extract routine patterns from conversation memories.
         

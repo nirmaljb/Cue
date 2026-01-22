@@ -43,22 +43,18 @@ async def get_whisper(person_id: str):
     relation = person.get("relation", "someone you know")
     contextual_note = person.get("contextual_note")
     
-    # 2. Fetch recent memory (optional)
-    recent_memory = None
-    try:
-        memories = graph_db.get_memories(person_id, limit=1)
-        if memories:
-            recent_memory = memories[0].get("summary")
-    except Exception as e:
-        print(f"⚠️ Whisper: failed to fetch memories: {e}")
+    # 2. Fetch routines from database (for 4-sentence whisper)
+    routines = graph_db.get_routines(person_id)
     
-    # 3. Generate whisper text via LLM
-    whisper_text = llm_service.generate_whisper_text(
+    # 3. Generate whisper text via LLM (4 sentences with routines, 1-2 without)
+    whisper_text = llm_service.generate_whisper(
         name=name,
         relation=relation,
+        routines=routines,
         contextual_note=contextual_note,
-        recent_memory=recent_memory,
     )
+    
+    print(f"🗣️ Whisper endpoint generated: {whisper_text}")
     
     if not whisper_text:
         return WhisperResponse(reason="generation_failed")

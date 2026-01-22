@@ -8,9 +8,10 @@ Real-time Augmented Memory for dementia patients, powered by edge-AI face tracki
 
 ### Patient Mode
 - **Real-time Face Detection** — MediaPipe-powered face tracking
-- **AR-style HUD** — Glassmorphic overlay showing name, relation, and emotional cues
+- **AR-style HUD** — Glassmorphic overlay showing name, relation, and routine activities
 - **Memory Recording** — Audio recording with automatic transcription and summarization
-- **Text-to-Speech** — Optional audio announcements for close family members
+- **Enhanced Audio Cues** — 4-sentence comfort whispers via ElevenLabs (Jyot voice)
+- **Routine Extraction** — AI-detected patterns from conversations shown in HUD
 
 ### Caregiver Mode
 - **Review Pending People** — See all unconfirmed faces detected
@@ -56,6 +57,9 @@ cp .env.example .env
 
 # Run the server
 python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# (Optional) Run background worker for routine extraction
+python -m app.workers.routine_worker
 ```
 
 ### 2. Frontend Setup
@@ -83,6 +87,7 @@ npm run dev
 | `/api/health` | GET | Health check |
 | `/api/recognize-face` | POST | Recognize a face from image |
 | `/api/hud-context` | POST | Get HUD content for a person |
+| `/api/whisper/{id}` | GET | Generate audio whisper cue |
 | `/api/memory/save` | POST | Save memory from audio |
 | `/api/caregiver/pending` | GET | Get pending people |
 | `/api/caregiver/confirm` | POST | Confirm a person's identity |
@@ -108,10 +113,11 @@ hackathon/
 ├── backend/
 │   ├── app/
 │   │   ├── routers/        # API endpoints
-│   │   ├── services/       # FaceNet, LLM, Whisper, DBs
+│   │   ├── services/       # InsightFace, LLM, Whisper, DBs
+│   │   ├── workers/        # Background routine worker
 │   │   └── models/         # Pydantic schemas
 │   └── ...
-└── plan.xml                # System design document
+└── claude.md               # System design document
 ```
 
 ## 🛠️ Tech Stack
@@ -121,10 +127,10 @@ hackathon/
 | Frontend | React + Vite |
 | Face Tracking | MediaPipe |
 | Backend | FastAPI |
-| Face Recognition | FaceNet (facenet-pytorch) |
-| LLM | Groq (gpt-oss-120b) |
+| Face Recognition | InsightFace (buffalo_s, ONNX) |
+| LLM | Groq (llama-3.3-70b-versatile) |
 | Speech-to-Text | Groq Whisper |
-| Text-to-Speech | Web Speech API |
+| Text-to-Speech | ElevenLabs (Jyot voice) |
 | Vector DB | Qdrant |
 | Graph DB | Neo4j |
 

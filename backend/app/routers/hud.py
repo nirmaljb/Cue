@@ -46,7 +46,7 @@ async def get_hud_context(request: HUDContextRequest):
     # Dementia-Safe: Return static contextual note
     # No AI emotional analysis
     
-    # Fetch routines
+    # Fetch routines for HUD display and whisper
     routines = graph_db.get_routines(request.person_id)
     selected_routine = None
     display_contextual_note = None
@@ -82,11 +82,19 @@ async def get_hud_context(request: HUDContextRequest):
         else:
             print(f"ℹ️ No routines or contextual note for person {request.person_id}")
     
+    # Generate whisper using routines (3-4 sentences when memories exist)
+    whisper_text = llm_service.generate_whisper(
+        name=person.get("name"),
+        relation=person.get("relation"),
+        routines=routines,  # Pass database routines
+        contextual_note=person.get("contextual_note")
+    )
+    
     return HUDContextResponse(
         name=person.get("name"),
         relation=person.get("relation"),
         contextual_note=display_contextual_note,  # Only set if no routine available
         routine=selected_routine,
         speak=False,
-        speechText=None,
+        speechText=whisper_text,  # Now includes whisper
     )

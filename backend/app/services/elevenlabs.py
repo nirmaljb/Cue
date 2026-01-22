@@ -5,7 +5,7 @@ import httpx
 from app.config import settings
 
 # Priyanka voice ID (Playful, Bright and Warm)
-PRIYANKA_VOICE_ID = "jsCqWAovK2LkecY7zXl4"
+JYOT_VOICE_ID = "6kUBvNdOU57rLktR7BK5"  # Jyot - smooth, comforting
 
 
 async def generate_speech(text: str) -> Optional[bytes]:
@@ -27,7 +27,7 @@ async def generate_speech(text: str) -> Optional[bytes]:
         async with httpx.AsyncClient() as client:
             # Standard TTS endpoint with default settings
             response = await client.post(
-                f"https://api.elevenlabs.io/v1/text-to-speech/{PRIYANKA_VOICE_ID}",
+                f"https://api.elevenlabs.io/v1/text-to-speech/{JYOT_VOICE_ID}",
                 headers={
                     "xi-api-key": settings.ELEVENLABS_API_KEY,
                     "Content-Type": "application/json",

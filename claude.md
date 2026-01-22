@@ -138,7 +138,7 @@ hackathon/
 - **Groq API**:
   - `llama-3.3-70b-versatile` - LLM for content generation
   - `whisper-large-v3` - Speech-to-text transcription
-- **ElevenLabs** - Text-to-speech (Priyanka voice) for audio cues
+- **ElevenLabs** - Text-to-speech (Jyot voice - smooth, comforting) for audio cues
 - **SentenceTransformers** - Memory embedding (all-MiniLM-L6-v2, 384-dim)
 
 ### Databases
@@ -262,9 +262,11 @@ useEffect(() => {
 **Node Types**:
 - `Person`: {id, name, relation, contextual_note, status, familiarity, last_seen}
 - `Memory`: {id, summary, emotional_tone, important_event, raw_transcript, timestamp}
+- `Routine`: {id, text, confidence, source, created_at}
 
 **Relationships**:
 - `(Person)-[:HAS_MEMORY]->(Memory)`
+- `(Person)-[:HAS_ROUTINE]->(Routine)`
 
 **Key Methods**:
 - `create_person(person_id, name, relation, ...)`
@@ -288,9 +290,24 @@ useEffect(() => {
 
 3. **`generate_whisper_text(name, relation, contextual_note, recent_memory)`**
    - Input: Person data + latest memory
-   - Output: 1-2 sentence calm reassurance
-   - Temperature: 0.5
-   - Example: "This is Rahul. He's your grandson who visits on weekends."
+   - Output: 1-2 sentence calm reassurance (fallback)
+
+4. **`generate_whisper(name, relation, routines, contextual_note)`** (NEW)
+   - Input: Person data + database routines
+   - Output: 4-sentence comfort message with routines
+   - Structure:
+     1. "This is [name]. He's/She's your [relation]."
+     2. Comfort statement
+     3. Routine/shared activity
+     4. Reassurance ("You can take your time." / "You're safe here." / "There's no rush.")
+
+5. **`extract_routines_from_memories(memories)`** (NEW)
+   - Input: List of memory summaries
+   - Output: JSON array of extracted routine patterns
+   - Returns specific, concrete routines (not generic statements)
+
+6. **`select_best_routine(routines, recent_memory)`** (NEW)
+   - Selects most relevant routine for HUD display
 
 **System Messages**:
 - HUD: "You are a calm, supportive assistant helping dementia patients..."
@@ -313,11 +330,32 @@ def transcribe(audio_base64):
 #### 6. `elevenlabs.py` (TTS Service)
 **API**: ElevenLabs Text-to-Speech
 
-**Voice**: Priyanka (jsCqWAovK2LkecY7zXl4) - Playful, Bright, Warm
+**Voice**: Jyot (6kUBvNdOU57rLktR7BK5) - Smooth, comforting female voice
 
 **Settings**: Default ElevenLabs settings (natural, clear speech)
 
 **Output**: MP3 audio bytes (base64 encoded for frontend)
+
+#### 7. `routine.py` (Routine Extraction Service) (NEW)
+**Purpose**: Extract routine patterns from conversation memories
+
+**Key Function**: `analyze_and_update_routines(person_id)`
+- Fetches all memories for person
+- Uses LLM to extract specific, concrete patterns
+- Stores routines in Neo4j as `Routine` nodes
+- Triggered by background worker every 2 memories
+
+### Background Worker
+
+#### `workers/routine_worker.py` (NEW)
+**Purpose**: Isolated background process for routine extraction
+
+**Polling**: Every 30 seconds
+**Logic**:
+1. Query Neo4j for people needing routine analysis
+2. Check: memory_count % 2 == 0 AND last_routine_analysis < last_memory_saved
+3. Run routine extraction for each person
+4. Mark analysis complete
 
 ---
 
