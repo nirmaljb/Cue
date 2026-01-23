@@ -24,10 +24,13 @@ export async function recognizeFace(imagesBase64) {
 }
 
 /**
- * Get HUD context for a person
+ * Get HUD context for a person with language support
+ * @param {string} personId - Person ID
+ * @param {string} status - Person status (confirmed/temporary)
+ * @param {string} lang - Language code (en, hi, ta, bn, te)
  */
-export async function getHUDContext(personId, status) {
-  const response = await fetch(`${API_URL}/hud-context`, {
+export async function getHUDContext(personId, status, lang = 'en') {
+  const response = await fetch(`${API_URL}/hud-context?lang=${lang}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ person_id: personId, status }),
@@ -36,6 +39,22 @@ export async function getHUDContext(personId, status) {
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.detail || 'Failed to get HUD context');
+  }
+
+  return response.json();
+}
+
+/**
+ * Get whisper audio cue for a person with language support
+ * @param {string} personId - Person ID
+ * @param {string} lang - Language code (en, hi, ta, bn, te)
+ */
+export async function getWhisper(personId, lang = 'en') {
+  const response = await fetch(`${API_URL}/whisper/${personId}?lang=${lang}`);
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || 'Failed to get whisper');
   }
 
   return response.json();

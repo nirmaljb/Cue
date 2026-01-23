@@ -101,6 +101,13 @@
     margin: 0;
 }
 
+.hero-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+
 .system-status {
     display: inline-flex;
     align-items: center;

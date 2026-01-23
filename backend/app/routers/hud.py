@@ -1,6 +1,6 @@
-"""HUD context API router."""
+"""HUD context API router with multi-language support."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from app.models.schemas import (
     HUDContextRequest,
@@ -10,19 +10,32 @@ from app.models.schemas import (
 from app.services.graph_db import graph_db
 from app.services.vector_db import vector_db
 from app.services.llm import llm_service
+from app.services.sarvam import sarvam_service
+from app.data.relations import get_relation, SUPPORTED_LANGUAGES
 
 
 router = APIRouter(tags=["HUD"])
 
 
 @router.post("/hud-context", response_model=HUDContextResponse)
-async def get_hud_context(request: HUDContextRequest):
-    """Generate HUD context for a person.
+async def get_hud_context(
+    request: HUDContextRequest,
+    lang: str = Query(default="en", description="Language code: en, hi, ta, bn, te")
+):
+    """Generate HUD context for a person with multi-language support.
     
     Flow:
-    - CONFIRMED: Fetch profile with static contextual note.
+    - CONFIRMED: Fetch profile, translate content to target language.
     - TEMPORARY/UNKNOWN: Return minimal response (clean state).
+    
+    Args:
+        request: HUD context request with person_id and status
+        lang: Target language code (en, hi, ta, bn, te)
     """
+    # Validate language
+    if lang not in SUPPORTED_LANGUAGES:
+        lang = "en"
+    
     if request.status == PersonStatus.TEMPORARY:
         # Clean state for temporary persons (Dementia-Safe: Silence)
         return HUDContextResponse(
@@ -42,59 +55,61 @@ async def get_hud_context(request: HUDContextRequest):
             detail="Person not found",
         )
     
+    # Get person data
+    name = person.get("name", "")
+    relation_en = person.get("relation", "")
     
-    # Dementia-Safe: Return static contextual note
-    # No AI emotional analysis
+    # Translate relation using static dictionary
+    relation_translated = get_relation(relation_en, lang)
+    print(f"🌐 Relation: {relation_en} → {relation_translated} ({lang})")
     
-    # Fetch routines for HUD display and whisper
-    routines = graph_db.get_routines(request.person_id)
-    selected_routine = None
-    display_contextual_note = None
+    # HUD Display Priority: Contextual Note > Routines
+    display_text = None
+    contextual_note = person.get("contextual_note", "")
     
-    if routines:
-        # Get recent memory for context
-        memories = graph_db.get_memories(request.person_id, limit=1)
-        recent_memory = memories[0].get("summary") if memories else None
+    if contextual_note and contextual_note.strip():
+        # Priority 1: Use contextual note (condense via LLM)
+        condensed = llm_service.condense_to_few_words(contextual_note)
         
-        # LLM selects best routine
-        selected_routine = llm_service.select_best_routine(routines, recent_memory)
-        
-        # Condense to keep HUD clean
-        if selected_routine:
-            selected_routine = llm_service.condense_to_few_words(selected_routine)
-            print(f"✅ Condensed routine: {selected_routine}")
-            # Don't show contextual note when we have a routine
-            display_contextual_note = None
+        # Translate if not English
+        if lang != "en" and condensed:
+            translated = await sarvam_service.translate(condensed, "en", lang)
+            display_text = translated or condensed
         else:
-            # Failed to select routine, fall back to contextual note
-            contextual_note = person.get("contextual_note", "")
-            if contextual_note and contextual_note.strip():
-                display_contextual_note = llm_service.condense_to_few_words(contextual_note)
-                print(f"✅ Using contextual note (no routine selected): {display_contextual_note}")
+            display_text = condensed
+        
+        print(f"✅ HUD using contextual note: {display_text}")
     else:
-        # No routines yet - use contextual note as fallback
-        contextual_note = person.get("contextual_note", "")
-        if contextual_note and contextual_note.strip():
-            # Transform and condense contextual note
-            routine_style = llm_service.transform_contextual_note_to_routine(contextual_note)
-            selected_routine = llm_service.condense_to_few_words(routine_style)
-            print(f"✅ Using contextual note fallback as routine: {selected_routine}")
+        # Priority 2: Fall back to routines (if no contextual note)
+        routines = graph_db.get_routines(request.person_id)
+        
+        if routines:
+            # Get recent memory for context
+            memories = graph_db.get_memories(request.person_id, limit=1)
+            recent_memory = memories[0].get("summary") if memories else None
+            
+            # LLM selects best routine (in English)
+            selected_routine = llm_service.select_best_routine(routines, recent_memory)
+            
+            if selected_routine:
+                selected_routine = llm_service.condense_to_few_words(selected_routine)
+                
+                # Translate if not English
+                if lang != "en" and selected_routine:
+                    translated = await sarvam_service.translate(selected_routine, "en", lang)
+                    display_text = translated or selected_routine
+                else:
+                    display_text = selected_routine
+                
+                print(f"✅ HUD using routine (fallback): {display_text}")
         else:
-            print(f"ℹ️ No routines or contextual note for person {request.person_id}")
-    
-    # Generate whisper using routines (3-4 sentences when memories exist)
-    whisper_text = llm_service.generate_whisper(
-        name=person.get("name"),
-        relation=person.get("relation"),
-        routines=routines,  # Pass database routines
-        contextual_note=person.get("contextual_note")
-    )
+            print(f"ℹ️ No contextual note or routines for person {request.person_id}")
     
     return HUDContextResponse(
-        name=person.get("name"),
-        relation=person.get("relation"),
-        contextual_note=display_contextual_note,  # Only set if no routine available
-        routine=selected_routine,
+        name=name,  # Keep name as-is (no translation/transliteration)
+        relation=relation_translated,
+        contextual_note=None,  # Not used anymore
+        routine=display_text,  # Contextual note (priority) or routine (fallback)
         speak=False,
-        speechText=whisper_text,  # Now includes whisper
+        speechText=None,  # Whisper handled by separate endpoint
     )

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { getConfirmedPeople, enrollPerson, deletePerson, updatePerson } from '../services/api';
+import LanguageSelector, { getStoredLanguage } from '../components/LanguageSelector';
 import './CaregiverMode.css';
 
 /**
@@ -52,6 +53,9 @@ export function CaregiverMode() {
         setWhisperEnabled(newValue);
         localStorage.setItem('cue_whisperEnabled', String(newValue));
     };
+
+    // Language selection (localStorage persisted via LanguageSelector)
+    const [selectedLanguage, setSelectedLanguage] = useState(() => getStoredLanguage());
 
     // Webcam refs
     const videoRef = useRef(null);
@@ -310,7 +314,13 @@ export function CaregiverMode() {
 
                     {/* 2. Hero Section */}
                     <section className="hero-section">
-                        <h1>Welcome, Caregiver.</h1>
+                        <div className="hero-header">
+                            <h1>Welcome, Caregiver.</h1>
+                            <LanguageSelector
+                                value={selectedLanguage}
+                                onChange={setSelectedLanguage}
+                            />
+                        </div>
                         <div className="system-status">
                             <span className="status-dot"></span>
                             System Active & Monitoring

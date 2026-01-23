@@ -34,6 +34,9 @@ class Settings:
     ELEVENLABS_API_KEY: str = os.getenv("ELEVENLABS_API_KEY", "")
     ELEVENLABS_VOICE_ID: str = os.getenv("ELEVENLABS_VOICE_ID", "21m00Tcm4TlvDq8ikWAM")  # Default: Rachel
     
+    # Sarvam AI (Indian language TTS + Translation)
+    SARVAM_API_KEY: str = os.getenv("SARVAM_API_KEY", "")
+    
     # Qdrant Collection Names
     FACE_EMBEDDINGS_COLLECTION: str = "face_embeddings"
     MEMORY_EMBEDDINGS_COLLECTION: str = "memory_embeddings"

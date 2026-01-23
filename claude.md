@@ -29,8 +29,9 @@ This document provides a comprehensive overview of the Cue project for AI assist
 ### Core Problem Being Solved
 Dementia patients struggle to recognize loved ones. Cue provides:
 1. **Visual Cues**: Immediate display of name, relationship, and context when someone is recognized
-2. **Audio Reassurance**: Gentle voice cue providing comfort ("This is Rahul, your grandson...")
+2. **Audio Reassurance**: Gentle voice cue providing comfort ("This is Rahul, your grandson...") in 5 languages
 3. **Memory Support**: Passive recording and summarization of conversations for later context
+4. **Multi-Language**: Hindi, Tamil, Bengali, Telugu support via Sarvam AI
 
 ---
 
@@ -51,8 +52,9 @@ Dementia patients struggle to recognize loved ones. Cue provides:
 │                    BACKEND (FastAPI)                        │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐  │
 │  │ Face Rec │  │   LLM    │  │   STT    │  │   TTS    │  │
-│  │InsightFace│ │  (Groq)  │  │ (Groq)   │  │(ElevenLabs)│ │
-│  └──────────┘  └──────────┘  └──────────┘  └──────────┘  │
+│  │InsightFace│ │  (Groq)  │  │ (Groq)   │  │ElevenLabs│  │
+│  └──────────┘  └──────────┘  └──────────┘  │ + Sarvam │  │
+│                                             └──────────┘  │
 └────────┬───────────────┬──────────────────────────────────┘
          │               │
          ▼               ▼
@@ -105,17 +107,24 @@ hackathon/
 │   │   │   └── schemas.py           # Pydantic models
 │   │   ├── routers/
 │   │   │   ├── recognize.py         # Face recognition endpoint
-│   │   │   ├── hud.py               # HUD context endpoint
-│   │   │   ├── whisper.py           # Audio cue endpoint
+│   │   │   ├── hud.py               # HUD context endpoint (multi-lang)
+│   │   │   ├── whisper.py           # Audio cue endpoint (multi-lang)
 │   │   │   ├── memory.py            # Memory save endpoint
 │   │   │   └── caregiver.py         # CRUD for people
 │   │   ├── services/
-│   │   │   ├── face_recognition.py  # FaceNet wrapper
+│   │   │   ├── face_recognition.py  # InsightFace wrapper
 │   │   │   ├── vector_db.py         # Qdrant client
 │   │   │   ├── graph_db.py          # Neo4j client
 │   │   │   ├── llm.py               # Groq LLM service
+│   │   │   ├── sarvam.py            # Sarvam Translate + TTS
 │   │   │   ├── whisper.py           # Groq STT service
-│   │   │   └── elevenlabs.py        # ElevenLabs TTS
+│   │   │   ├── elevenlabs.py        # ElevenLabs TTS (English)
+│   │   │   └── routine.py           # Routine extraction
+│   │   ├── workers/
+│   │   │   └── routine_worker.py    # Background routine extraction
+│   │   ├── data/
+│   │   │   ├── relations.py         # Multi-lang relation dictionary
+│   │   │   └── whisper_templates.py # Audio templates per language
 │   │   └── utils/
 │   │       └── image.py             # Image processing
 │   └── requirements.txt
@@ -138,12 +147,21 @@ hackathon/
 - **Groq API**:
   - `llama-3.3-70b-versatile` - LLM for content generation
   - `whisper-large-v3` - Speech-to-text transcription
-- **ElevenLabs** - Text-to-speech (Jyot voice - smooth, comforting) for audio cues
+- **ElevenLabs** - Text-to-speech (Jyot voice) for English audio cues
+- **Sarvam AI** - Indian language TTS (Vidya voice) + Translation (mayura:v1)
 - **SentenceTransformers** - Memory embedding (all-MiniLM-L6-v2, 384-dim)
 
 ### Databases
 - **Qdrant Cloud** - Vector similarity search
 - **Neo4j Cloud** - Graph database
+
+### Platform Support
+| Platform | CPU | GPU | Notes |
+|----------|-----|-----|-------|
+| macOS (Apple Silicon) | ✅ | ✅ CoreML | Best performance |
+| macOS (Intel) | ✅ | ❌ | CPU only |
+| Windows | ✅ | ✅ CUDA | Install `onnxruntime-gpu` |
+| Linux | ✅ | ✅ CUDA | Install `onnxruntime-gpu` |
 
 ---
 

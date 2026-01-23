@@ -3,7 +3,8 @@ import { Camera } from '../components/Camera';
 import { HUD } from '../components/HUD';
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
 import { useFaceTracking, SessionState } from '../hooks/useFaceTracking';
-import { recognizeFace, getHUDContext, saveMemory } from '../services/api';
+import { recognizeFace, getHUDContext, saveMemory, getWhisper } from '../services/api';
+import { getStoredLanguage } from '../components/LanguageSelector';
 import './PatientMode.css';
 
 /**
@@ -40,7 +41,9 @@ export function PatientMode() {
             const recognition = await recognizeFace(frames);
 
             if (recognition.recognized && recognition.status === 'confirmed') {
-                const hud = await getHUDContext(recognition.person_id, recognition.status);
+                // Get language from localStorage
+                const lang = getStoredLanguage();
+                const hud = await getHUDContext(recognition.person_id, recognition.status, lang);
                 setHudData(hud);
                 setCurrentPersonId(recognition.person_id);
                 recordingPersonIdRef.current = recognition.person_id;
@@ -100,8 +103,9 @@ export function PatientMode() {
             const timer = setTimeout(async () => {
                 try {
                     console.log('🔊 Fetching whisper audio...');
-                    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000/api'}/whisper/${currentPersonId}`);
-                    const data = await response.json();
+                    // Get language from localStorage
+                    const lang = getStoredLanguage();
+                    const data = await getWhisper(currentPersonId, lang);
 
                     if (data.audio_url) {
                         console.log('🎵 Playing whisper:', data.text);

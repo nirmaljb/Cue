@@ -10,7 +10,9 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transform: scaleX(-1); /* Mirror for selfie view */
+  /* Fill screen, may crop edges */
+  transform: scaleX(-1);
+  /* Mirror for selfie view */
 }
 
 .camera-overlay {
@@ -22,7 +24,7 @@
   pointer-events: none;
 }
 
-.camera-overlay > * {
+.camera-overlay>* {
   pointer-events: auto;
 }
 
