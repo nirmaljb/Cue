@@ -71,15 +71,19 @@ async def recognize_face(request: RecognizeFaceRequest):
             
             if matches:
                 match = matches[0]
+                print(f"  Frame {i+1}: Found match - person_id: {match['person_id'][:8]}..., status: {match['status']}, confidence: {match['confidence']:.3f}")
                 
                 # Only consider CONFIRMED persons
-                if match["status"] == "confirmed" and match["confidence"] > best_confidence:
-                    person = graph_db.get_person(match["person_id"])
-                    if person:
-                        best_match = match
-                        best_confidence = match["confidence"]
-                        best_person = person
-                        print(f"  Frame {i+1}: Matched {person.get('name', 'Unknown')} (confidence: {match['confidence']:.3f})")
+                if match["status"] == "confirmed":
+                    if match["confidence"] > best_confidence:
+                        person = graph_db.get_person(match["person_id"])
+                        if person:
+                            best_match = match
+                            best_confidence = match["confidence"]
+                            best_person = person
+                            print(f"    → Best match updated: {person.get('name', 'Unknown')}")
+                else:
+                    print(f"    → Skipped: status is '{match['status']}', not 'confirmed'")
             else:
                 print(f"  Frame {i+1}: No match found")
                 

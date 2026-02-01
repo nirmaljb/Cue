@@ -23,7 +23,7 @@ class Settings:
     
     # Face Recognition
     FACE_SIMILARITY_THRESHOLD: float = float(
-        os.getenv("FACE_SIMILARITY_THRESHOLD", "0.8")
+        os.getenv("FACE_SIMILARITY_THRESHOLD", "0.5")
     )
     
     # Server
