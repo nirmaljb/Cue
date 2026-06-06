@@ -1,9 +1,10 @@
 """Configuration management for REMIND-AR backend."""
 
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 
 class Settings:
@@ -18,8 +19,9 @@ class Settings:
     
     # Neo4j Cloud
     NEO4J_URI: str = os.getenv("NEO4J_URI", "")
-    NEO4J_USER: str = os.getenv("NEO4J_USER", "neo4j")
+    NEO4J_USER: str = os.getenv("NEO4J_USER") or os.getenv("NEO4J_USERNAME", "neo4j")
     NEO4J_PASSWORD: str = os.getenv("NEO4J_PASSWORD", "")
+    NEO4J_DATABASE: str = os.getenv("NEO4J_DATABASE", "")
     
     # Face Recognition
     FACE_SIMILARITY_THRESHOLD: float = float(

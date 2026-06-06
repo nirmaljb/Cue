@@ -1,5 +1,6 @@
 """Neo4j graph database service for people, relationships, and memories."""
 
+import os
 from neo4j import GraphDatabase
 from neo4j.exceptions import SessionExpired, ServiceUnavailable
 from typing import Optional
@@ -8,6 +9,17 @@ import uuid
 from functools import wraps
 
 from app.config import settings
+
+
+def configure_ssl_cert_file():
+    """Use certifi when this Python install does not expose a default CA file."""
+    if os.environ.get("SSL_CERT_FILE"):
+        return
+    try:
+        import certifi
+    except ImportError:
+        return
+    os.environ["SSL_CERT_FILE"] = certifi.where()
 
 
 def retry_on_connection_error(max_retries=3):
@@ -49,10 +61,13 @@ class GraphDBService:
             return
         
         try:
+            configure_ssl_cert_file()
+            # neo4j+s:// uses TLS automatically — neo4j driver v5 handles it natively.
+            # Do NOT pass ssl_context here; it is incompatible with neo4j+s:// URIs.
             self.driver = GraphDatabase.driver(
                 settings.NEO4J_URI,
                 auth=(settings.NEO4J_USER, settings.NEO4J_PASSWORD),
-                max_connection_lifetime=3600,  # 1 hour
+                max_connection_lifetime=3600,
                 max_connection_pool_size=50,
                 connection_acquisition_timeout=60,
             )
@@ -63,6 +78,10 @@ class GraphDBService:
             print(f"❌ Failed to connect to Neo4j: {e}")
             self._connected = False
             raise
+
+    def _session(self):
+        """Create a Neo4j session for the configured database, if any."""
+        return self.driver.session(database=settings.NEO4J_DATABASE or None)
     
     def reconnect(self):
         """Force reconnection to Neo4j."""
@@ -81,7 +100,7 @@ class GraphDBService:
     
     def _ensure_constraints(self):
         """Create unique constraints if they don't exist."""
-        with self.driver.session() as session:
+        with self._session() as session:
             # Unique constraint on Person id
             session.run("""
                 CREATE CONSTRAINT person_id IF NOT EXISTS
@@ -103,7 +122,7 @@ class GraphDBService:
         try:
             if not self._connected:
                 self.connect()
-            with self.driver.session() as session:
+            with self._session() as session:
                 session.run("RETURN 1")
             return True
         except Exception:
@@ -124,7 +143,7 @@ class GraphDBService:
         person_id = str(uuid.uuid4())
         now = datetime.utcnow().isoformat()
         
-        with self.driver.session() as session:
+        with self._session() as session:
             session.run("""
                 CREATE (p:Person {
                     id: $id,
@@ -144,7 +163,7 @@ class GraphDBService:
     @retry_on_connection_error(max_retries=3)
     def get_person(self, person_id: str) -> Optional[dict]:
         """Get a person by ID."""
-        with self.driver.session() as session:
+        with self._session() as session:
             result = session.run("""
                 MATCH (p:Person {id: $id})
                 RETURN p
@@ -166,7 +185,7 @@ class GraphDBService:
         """Update a person's details."""
         now = datetime.utcnow().isoformat()
         
-        with self.driver.session() as session:
+        with self._session() as session:
             if name is not None:
                 session.run("""
                     MATCH (p:Person {id: $id})
@@ -196,7 +215,7 @@ class GraphDBService:
         """Update the last seen timestamp for a person."""
         now = datetime.utcnow().isoformat()
         
-        with self.driver.session() as session:
+        with self._session() as session:
             session.run("""
                 MATCH (p:Person {id: $id})
                 SET p.last_seen_at = $now
@@ -204,7 +223,7 @@ class GraphDBService:
     
     def update_familiarity(self, person_id: str, increment: float = 0.05):
         """Increment familiarity score (capped at 1.0)."""
-        with self.driver.session() as session:
+        with self._session() as session:
             session.run("""
                 MATCH (p:Person {id: $id})
                 SET p.familiarity_score = 
@@ -216,7 +235,7 @@ class GraphDBService:
     
     def get_pending_people(self) -> list[dict]:
         """Get all temporary (pending) people."""
-        with self.driver.session() as session:
+        with self._session() as session:
             result = session.run("""
                 MATCH (p:Person {status: 'temporary'})
                 OPTIONAL MATCH (p)-[:HAS_MEMORY]->(m:Memory)
@@ -240,7 +259,7 @@ class GraphDBService:
     
     def get_confirmed_people(self) -> list[dict]:
         """Get all confirmed people."""
-        with self.driver.session() as session:
+        with self._session() as session:
             result = session.run("""
                 MATCH (p:Person {status: 'confirmed'})
                 RETURN p
@@ -251,7 +270,7 @@ class GraphDBService:
     
     def delete_person(self, person_id: str):
         """Delete a person and all their memories."""
-        with self.driver.session() as session:
+        with self._session() as session:
             session.run("""
                 MATCH (p:Person {id: $id})
                 OPTIONAL MATCH (p)-[:HAS_MEMORY]->(m:Memory)
@@ -274,7 +293,7 @@ class GraphDBService:
         memory_id = str(uuid.uuid4())
         now = datetime.utcnow().isoformat()
         
-        with self.driver.session() as session:
+        with self._session() as session:
             session.run("""
                 MATCH (p:Person {id: $person_id})
                 CREATE (m:Memory {
@@ -294,7 +313,7 @@ class GraphDBService:
     
     def get_memories(self, person_id: str, limit: int = 10) -> list[dict]:
         """Get memories for a person, ordered by recency."""
-        with self.driver.session() as session:
+        with self._session() as session:
             result = session.run("""
                 MATCH (p:Person {id: $id})-[:HAS_MEMORY]->(m:Memory)
                 RETURN m
@@ -306,7 +325,7 @@ class GraphDBService:
     
     def delete_memory(self, memory_id: str):
         """Delete a specific memory."""
-        with self.driver.session() as session:
+        with self._session() as session:
             session.run("""
                 MATCH (m:Memory {id: $id})
                 DETACH DELETE m
@@ -337,7 +356,7 @@ class GraphDBService:
         """
         routine_id = str(uuid.uuid4())
         
-        with self.driver.session() as session:
+        with self._session() as session:
             session.run("""
                 MATCH (p:Person {id: $person_id})
                 CREATE (r:Routine {
@@ -362,7 +381,7 @@ class GraphDBService:
         Returns:
             List of routine dicts with id, text, confidence, source
         """
-        with self.driver.session() as session:
+        with self._session() as session:
             result = session.run("""
                 MATCH (p:Person {id: $person_id})-[:HAS_ROUTINE]->(r:Routine)
                 RETURN r.id as id, r.text as text, r.confidence as confidence,
@@ -385,7 +404,7 @@ class GraphDBService:
     @retry_on_connection_error()
     def delete_all_routines(self, person_id: str):
         """Delete all routines for a person (before re-analysis)."""
-        with self.driver.session() as session:
+        with self._session() as session:
             session.run("""
                 MATCH (p:Person {id: $person_id})-[:HAS_ROUTINE]->(r:Routine)
                 DETACH DELETE r
@@ -394,7 +413,7 @@ class GraphDBService:
     @retry_on_connection_error()
     def get_memory_count(self, person_id: str) -> int:
         """Get total number of memories for a person."""
-        with self.driver.session() as session:
+        with self._session() as session:
             result = session.run("""
                 MATCH (p:Person {id: $person_id})-[:HAS_MEMORY]->(m:Memory)
                 RETURN count(m) as count
@@ -410,7 +429,7 @@ class GraphDBService:
     @retry_on_connection_error()
     def update_person_timestamp(self, person_id: str, field: str):
         """Update a timestamp field on person node."""
-        with self.driver.session() as session:
+        with self._session() as session:
             session.run(f"""
                 MATCH (p:Person {{id: $person_id}})
                 SET p.{field} = datetime()
@@ -425,7 +444,7 @@ class GraphDBService:
         - Memory count is even (divisible by 2)
         - Never analyzed OR last analysis before last memory save
         """
-        with self.driver.session() as session:
+        with self._session() as session:
             result = session.run("""
                 MATCH (p:Person)-[:HAS_MEMORY]->(m:Memory)
                 WITH p, count(m) as memory_count

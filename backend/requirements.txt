@@ -20,6 +20,7 @@ qdrant-client==1.11.0
 
 # Graph DB
 neo4j==5.23.0
+certifi>=2024.8.30
 
 # LLM & AI
 groq==0.9.0
