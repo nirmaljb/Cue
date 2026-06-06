@@ -5,9 +5,11 @@ python-multipart==0.0.9
 
 # Face Recognition - InsightFace (NEW - 5-10x faster)
 insightface==0.7.3
+onnx>=1.16.0,<1.19.0      # ONNX 1.19+ needs ml-dtypes float4 symbols that break this NumPy 1.x stack
 onnxruntime>=1.16.0        # ONNX runtime for CPU/GPU acceleration
                            # For Windows with NVIDIA GPU, install: pip install onnxruntime-gpu
 opencv-python>=4.8.0       # Required by InsightFace
+ml-dtypes>=0.4.0,<0.5.0    # Keep compatible with NumPy 1.x on Python 3.13
 
 # Face Recognition - FaceNet (LEGACY - keeping for rollback)
 facenet-pytorch==2.5.3
@@ -32,4 +34,4 @@ sentence-transformers==3.0.1
 python-dotenv==1.0.1
 pydantic==2.8.2
 httpx==0.27.0
-numpy>=1.24.0
+numpy>=1.26.0,<2.0.0

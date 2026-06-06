@@ -13,6 +13,7 @@ from PIL import Image
 import cv2
 import warnings
 import os
+import tempfile
 
 # Suppress InsightFace's scikit-image deprecation warning
 warnings.filterwarnings('ignore', category=FutureWarning, module='insightface')
@@ -45,6 +46,10 @@ class FaceRecognitionService:
             return
         
         try:
+            os.environ.setdefault("NO_ALBUMENTATIONS_UPDATE", "1")
+            os.environ.setdefault("MPLCONFIGDIR", os.path.join(tempfile.gettempdir(), "cue-matplotlib"))
+            os.makedirs(os.environ["MPLCONFIGDIR"], exist_ok=True)
+
             import insightface
             from insightface.app import FaceAnalysis
             
@@ -62,22 +67,46 @@ class FaceRecognitionService:
             
             print(f"🔄 Loading InsightFace {model_name} model...")
             
-            # Set providers in priority order
-            providers = ['CUDAExecutionProvider', 'CoreMLExecutionProvider', 'CPUExecutionProvider']
-            
-            # Initialize model
-            self.model = FaceAnalysis(
-                name=model_name,
-                providers=providers,
-                allowed_modules=['detection', 'recognition']  # Skip age/gender for speed
-            )
+            # Set providers in priority order, then fall back to CPU if an
+            # accelerator is available but cannot initialize on this machine.
+            providers = []
+            if 'CUDAExecutionProvider' in available_providers:
+                providers.append('CUDAExecutionProvider')
+            if 'CoreMLExecutionProvider' in available_providers:
+                providers.append('CoreMLExecutionProvider')
+            if 'CPUExecutionProvider' in available_providers:
+                providers.append('CPUExecutionProvider')
+
+            provider_attempts = [providers]
+            if providers != ['CPUExecutionProvider'] and 'CPUExecutionProvider' in available_providers:
+                provider_attempts.append(['CPUExecutionProvider'])
+
+            last_error = None
+            selected_providers = None
+            for provider_list in provider_attempts:
+                try:
+                    self.model = FaceAnalysis(
+                        name=model_name,
+                        providers=provider_list,
+                        allowed_modules=['detection', 'recognition']  # Skip age/gender for speed
+                    )
+                    selected_providers = provider_list
+                    break
+                except Exception as e:
+                    last_error = e
+                    if provider_list == ['CPUExecutionProvider']:
+                        raise
+                    print(f"⚠️ InsightFace providers {provider_list} failed, retrying with CPU: {e}")
+
+            if self.model is None:
+                raise last_error
             
             # Prepare with detection size
             # GPU can handle larger sizes efficiently
             det_size = (self.det_size, self.det_size)
             
             self.model.prepare(
-                ctx_id=0 if self.is_gpu else -1,  # GPU ID or CPU
+                ctx_id=0 if selected_providers and 'CUDAExecutionProvider' in selected_providers else -1,
                 det_size=det_size,
                 det_thresh=0.5  # Detection confidence threshold
             )
@@ -245,4 +274,3 @@ class FaceRecognitionService:
 
 # Singleton instance
 face_recognition = FaceRecognitionService()
-
