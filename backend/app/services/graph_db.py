@@ -211,6 +211,7 @@ class GraphDBService:
                         p.confirmed_at = CASE WHEN $status = 'confirmed' THEN $now ELSE p.confirmed_at END
                 """, id=person_id, status=status, now=now)
     
+    @retry_on_connection_error(max_retries=3)
     def update_last_seen(self, person_id: str):
         """Update the last seen timestamp for a person."""
         now = datetime.utcnow().isoformat()
@@ -221,6 +222,7 @@ class GraphDBService:
                 SET p.last_seen_at = $now
             """, id=person_id, now=now)
     
+    @retry_on_connection_error(max_retries=3)
     def update_familiarity(self, person_id: str, increment: float = 0.05):
         """Increment familiarity score (capped at 1.0)."""
         with self._session() as session:
@@ -233,6 +235,7 @@ class GraphDBService:
                     END
             """, id=person_id, inc=increment)
     
+    @retry_on_connection_error(max_retries=3)
     def get_pending_people(self) -> list[dict]:
         """Get all temporary (pending) people."""
         with self._session() as session:
@@ -257,17 +260,20 @@ class GraphDBService:
             
             return people
     
+    @retry_on_connection_error(max_retries=3)
     def get_confirmed_people(self) -> list[dict]:
         """Get all confirmed people."""
         with self._session() as session:
             result = session.run("""
-                MATCH (p:Person {status: 'confirmed'})
+                MATCH (p:Person)
+                WHERE properties(p)[$status_key] = $status
                 RETURN p
-                ORDER BY p.name
-            """)
+                ORDER BY coalesce(properties(p)[$name_key], '')
+            """, status_key="status", status="confirmed", name_key="name")
             
             return [dict(record["p"]) for record in result]
     
+    @retry_on_connection_error(max_retries=3)
     def delete_person(self, person_id: str):
         """Delete a person and all their memories."""
         with self._session() as session:
@@ -311,6 +317,7 @@ class GraphDBService:
         
         return memory_id
     
+    @retry_on_connection_error(max_retries=3)
     def get_memories(self, person_id: str, limit: int = 10) -> list[dict]:
         """Get memories for a person, ordered by recency."""
         with self._session() as session:
@@ -323,6 +330,7 @@ class GraphDBService:
             
             return [dict(record["m"]) for record in result]
     
+    @retry_on_connection_error(max_retries=3)
     def delete_memory(self, memory_id: str):
         """Delete a specific memory."""
         with self._session() as session:
